@@ -109,7 +109,22 @@ void NBT_Print_Tag(NBT_Tag *t);
 void NBT_Print_Value(NBT_Type t, void *val);
 void NBT_Print_Byte_Array(unsigned char *ba, int len);
 
+void NBT_Change_Value(NBT_Tag *tag, void *val, size_t size);
+
 void NBT_Print_Indent(int lv);
+
+void NBT_Add_Tag(const char *name,
+                 NBT_Type type,
+                 void *val,
+                 size_t size,
+                 NBT_Tag *parent);
+void NBT_Add_Tag_To_Compound(const char *name,
+                            NBT_Type type,
+                            void *val,
+                            size_t size,
+                            NBT_Compound *parent);
+void NBT_Add_Item_To_List(void *val, size_t size, NBT_List *parent);
+void NBT_Add_Byte_To_Array(char *val, NBT_Byte_Array *ba);
 
 #define DEBUG 1
 

@@ -15,10 +15,6 @@
 #include "endianness.h"
 #include "nbt.h"
 
-/*
- * TODO: NBT_Free[_X]() functions!
- */
-
 /* Initialization subroutine(s) */
 int NBT_Init(NBT_File **nbt, const char *filename)
 {
@@ -63,7 +59,6 @@ int NBT_Read_Tag(NBT_File *nbt, NBT_Tag **parent)
 
     if (type != TAG_End) /* TAG_End has no name */
         NBT_Read_String(nbt, &((*parent)->name));
-
 
     NBT_Read(nbt, type, &((*parent)->value));
 
@@ -299,7 +294,6 @@ long NBT_Read_Compound(NBT_File *nbt, NBT_Tag ***listptr)
 {
     long i;
 
-    /* Initialize the list with space for 5 elements */
     *listptr = malloc(sizeof(NBT_Tag *)); 
 
     for (i = 0;; ++i)
@@ -307,16 +301,16 @@ long NBT_Read_Compound(NBT_File *nbt, NBT_Tag ***listptr)
         (*listptr)[i] = malloc(sizeof(NBT_Tag));
         NBT_Type last = NBT_Read_Tag(nbt, &((*listptr)[i]));
 
-        *listptr = realloc(*listptr, sizeof(NBT_Tag) * (i+2));
+        *listptr = realloc(*listptr, sizeof(NBT_Tag *) * (i+2));
 
         if (last == TAG_End)
         {
-            (*listptr)[++i] = NULL;
+            //(*listptr)[++i] = NULL;
             break;
         }
     }
 
-    return i-1;
+    return i + 1;
 }
 
 /* Cleanup subroutines */
@@ -395,11 +389,8 @@ int NBT_Free_Compound(NBT_Compound *c)
 {
     int i;
 
-    for (i = 0; c->length; ++i)
+    for (i = 0; i < c->length; ++i)
     {
-        if (c->tags[i] == NULL)
-            break;
-
         free(c->tags[i]->name);
         NBT_Free_Type(c->tags[i]->type, c->tags[i]->value);
         free(c->tags[i]);
@@ -543,8 +534,7 @@ void NBT_Print_Value(NBT_Type t, void *v)
             indent++;
 
             for (i = 0; i < c->length; ++i)
-                if (c->tags[i] != NULL)
-                    NBT_Print_Tag(c->tags[i]);
+                NBT_Print_Tag(c->tags[i]);
 
             NBT_Print_Indent(--indent);
             printf("}\n");
@@ -586,7 +576,7 @@ void NBT_Print_Byte_Array(unsigned char *ba, int len)
 {
     int i;
 
-    printf("[");
+    printf("(%d entries) [", len);
     for (i = 0; i < len; ++i)
     {
         printf("%02X", ba[i]);
@@ -598,6 +588,116 @@ void NBT_Print_Byte_Array(unsigned char *ba, int len)
     }
 
     printf("]");
+
+    return;
+}
+
+void NBT_Change_Value(NBT_Tag *tag, void *val, size_t size)
+{
+    NBT_Free_Type(tag->type, tag->value);
+
+    void *t = malloc(size);
+    memcpy(t, val, size);
+
+    tag->value = t;
+
+    return;
+}
+
+void NBT_Add_Tag(const char *name, 
+                 NBT_Type type,
+                 void *val,
+                 size_t size,
+                 NBT_Tag *parent)
+{
+    if (parent->type == TAG_Compound)
+    {
+        NBT_Compound *c = (NBT_Compound *)parent->value;
+
+        NBT_Add_Tag_To_Compound(name, type, val, size, c);
+    }
+    else if (parent->type == TAG_List)
+    {
+        NBT_List *l = (NBT_List *)parent->value;
+
+        if (l->type == type)
+            NBT_Add_Item_To_List(val, size, l);
+    }
+    else if ((parent->type == TAG_Byte_Array) && (type == TAG_Byte))
+    {
+        NBT_Byte_Array *ba = (NBT_Byte_Array *)parent->value;
+
+        NBT_Add_Byte_To_Array(val, ba);
+    }
+    else
+        return;
+}
+
+void NBT_Add_Tag_To_Compound(const char *name,
+                            NBT_Type type,
+                            void *val,
+                            size_t size,
+                            NBT_Compound *parent)
+{
+    NBT_Tag **tags_temp = NULL;
+    tags_temp = realloc(parent->tags, 
+                        sizeof(NBT_Tag *) * (parent->length + 1));
+
+    if (tags_temp != NULL)
+    {
+        NBT_Tag *temp = malloc(sizeof(NBT_Tag));
+        if (temp != NULL)
+        {
+            parent->tags = tags_temp;
+            parent->length++;
+            printf("New length: %ld\n", parent->length);
+
+            temp->name = malloc(strlen(name) + 1);
+            strcpy(temp->name, name);
+
+            temp->type = type;
+
+            temp->value = malloc(size);
+            memcpy(temp->value, val, size);
+
+            parent->tags[parent->length - 1] = temp;
+            //parent->tags[parent->length - 1] = NULL;
+        }
+    }
+
+    return;
+}
+
+void NBT_Add_Item_To_List(void *val, size_t size, NBT_List *parent)
+{
+    void **temp = realloc(parent->content, sizeof(void *) * (parent->length + 1));
+    if (temp != NULL)
+    {
+        void *new = malloc(size);
+        if (new != NULL)
+        {
+            parent->content = temp;
+            parent->length++;
+
+            memcpy(new, val, size);
+            parent->content[parent->length - 1] = new;
+        }
+        else
+            free(temp);
+    }
+
+    return;
+}
+
+void NBT_Add_Byte_To_Array(char *val, NBT_Byte_Array *parent)
+{
+    unsigned char *temp = realloc(parent->content, (parent->length + 1));
+    if (temp != NULL)
+    {
+        parent->content = temp;
+        parent->length++;
+        parent->content[parent->length - 1] = *val;
+    }
 
     return;
 }
