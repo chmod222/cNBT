@@ -11,102 +11,83 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <getopt.h>
+
 #include "endianness.h"
 #include "nbt.h"
 
+void dump_nbt(char *filename);
+
 int main(int argc, char **argv)
 {
-    NBT_File *nbt = NULL;
-    NBT_Tag *t;
+    int c;
+    static int opt_dump = 0;
 
-    /* Enough parameters given? */
-    if (argc < 2)
+    //opterr = 0;
+
+    for (;;)
     {
-        fprintf(stderr, "Usage: %s <file>\n",
-                argv[0]);
+        static struct option long_options[] =
+        {
+            {"dump",    no_argument, &opt_dump, 1},
+            {"version", no_argument, NULL, 'v'},
+            {NULL,      no_argument, NULL, 0}
+        };
 
-        return EXIT_FAILURE;
+        int option_index = 0;
+
+        c = getopt_long(argc, argv, "dv", long_options, &option_index);
+
+        if (c == -1)
+            break;
+
+        switch (c)
+        {
+            case 0:
+                if (long_options[option_index].flag != 0)
+                    break;
+
+                break;
+
+            case 'v':
+                printf("nbttool 1.0 (%s, %s)\n", __DATE__, __TIME__);
+
+                return EXIT_SUCCESS;
+
+            case '?':
+                break;
+        }
     }
 
-    if (NBT_Init(&nbt, argv[1]) != NBT_OK)
+    if (optind < argc)
+    {
+        /* There is more in argv */
+
+        if (opt_dump)
+            dump_nbt(argv[optind]); 
+    }
+
+
+    return 0;
+}
+
+void dump_nbt(char *filename)
+{
+    NBT_File *nbt = NULL;
+
+    /* Enough parameters given? */
+    if (NBT_Init(&nbt, filename) != NBT_OK)
     {
         fprintf(stderr, "NBT_Init(): Failure initializing\n");
-        return EXIT_FAILURE;
+        fprintf(stderr, "File: %s\n", filename);
+
+        return;
     }
 
     /* Try parsing */
     NBT_Parse(nbt);
-
-    printf("# PRE ------------\n");
-    NBT_Print_Tag(nbt->root);
-
-    t = nbt->root;
-    NBT_Change_Name(t, "Supergrief");
-
-    if (t->type == TAG_Compound)
-    {
-        NBT_Tag *target;
-        target = NBT_Find_Tag_By_Name("Data", t);
-
-        if (target != NULL)
-        {
-            NBT_Tag *spawnx, *spawny, *spawnz;
-            NBT_Tag *playerdata;
-
-            spawnx = NBT_Find_Tag_By_Name("SpawnX", target);
-            spawny = NBT_Find_Tag_By_Name("SpawnY", target);
-            spawnz = NBT_Find_Tag_By_Name("SpawnZ", target);
-
-            if ((spawnx == NULL) || (spawny == NULL) || (spawnz == NULL))
-            {
-                fprintf(stderr, "Couldn't get Spawn X, Y or Z\n");
-            }
-            else
-            {
-                int *sx, *sy, *sz;
-
-                sx = (int *)spawnx->value;
-                sy = (int *)spawny->value;
-                sz = (int *)spawnz->value;
-
-                playerdata = NBT_Find_Tag_By_Name("Player", target);
-                if (playerdata != NULL)
-                {
-                    NBT_Tag *pos = NBT_Find_Tag_By_Name("Pos", playerdata);
-                    if (pos != NULL)
-                    {
-                        NBT_List *l = (NBT_List *)pos->value;
-                        if (l->length != 3)
-                            fprintf(stderr, "Malformed position data\n");
-                        else
-                        {
-                            double *x, *y, *z;
-
-                            x = (double *)l->content[0];
-                            y = (double *)l->content[1];
-                            z = (double *)l->content[2];
-
-                            printf("X,Y,Z: %.2f,%.2f,%.2f\n", *x, *y, *z);
-                            printf("SX, SY, SZ: %d,%d,%d\n", *sx, *sy, *sz);
-                        }
-                    }
-                    else
-                    {
-                        fprintf(stderr, "No position data\n");
-                    }
-                }
-                else
-                {
-                    fprintf(stderr, "Couldn't fetch playerdata\n");
-                }
-            }    
-        }
-    }
-
-    printf("# POST ------------\n");
-
     NBT_Print_Tag(nbt->root);
     NBT_Free(nbt);
 
-    return 0;
+    return;
 }
