@@ -667,7 +667,6 @@ void NBT_Add_Tag_To_Compound(const char *name,
         {
             parent->tags = tags_temp;
             parent->length++;
-            printf("New length: %ld\n", parent->length);
 
             temp->name = malloc(strlen(name) + 1);
             strcpy(temp->name, name);
@@ -717,4 +716,53 @@ void NBT_Add_Byte_To_Array(char *val, NBT_Byte_Array *parent)
     }
 
     return;
+}
+
+void NBT_Remove_Tag(NBT_Tag *target, NBT_Tag *parent)
+{
+    int i;
+    int count = 0;
+    NBT_Tag **templist = NULL;
+    NBT_Compound *tmp = (NBT_Compound *)parent->value;
+
+    if (parent->type != TAG_Compound)
+        return;
+
+    templist = malloc(sizeof(NBT_Tag *));
+
+    for (i = 0; i < tmp->length; ++i)
+    {
+        if (tmp->tags[i] != target)
+        {
+            templist[count] = tmp->tags[i];
+            templist = realloc(templist, sizeof(NBT_Tag *) * (count+2));
+
+            ++count;
+        }
+        else
+        {
+            NBT_Free_Tag(tmp->tags[i]);
+        }
+    }
+
+    free(tmp->tags);
+    tmp->tags = templist;
+    tmp->length = count;
+
+    return;
+}
+
+NBT_Tag *NBT_Find_Tag_By_Name(const char *needle, NBT_Tag *haystack)
+{
+    if (haystack->type == TAG_Compound)
+    {
+        NBT_Compound *c = (NBT_Compound *)haystack->value;
+        int i;
+
+        for (i = 0; i < c->length; ++i)
+            if (strcmp(c->tags[i]->name, needle) == 0)
+                return c->tags[i];
+    }
+
+    return NULL;
 }

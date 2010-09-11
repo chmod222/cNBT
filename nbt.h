@@ -127,6 +127,10 @@ void NBT_Add_Tag_To_Compound(const char *name,
 void NBT_Add_Item_To_List(void *val, size_t size, NBT_List *parent);
 void NBT_Add_Byte_To_Array(char *val, NBT_Byte_Array *ba);
 
+void NBT_Remove_Tag(NBT_Tag *target, NBT_Tag *parent);
+
+NBT_Tag *NBT_Find_Tag_By_Name(const char *needle, NBT_Tag *haystack);
+
 #define DEBUG 1
 
 /* Let's try an unwrapped "char *" first, shall we?
