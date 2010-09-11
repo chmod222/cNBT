@@ -110,6 +110,7 @@ void NBT_Print_Value(NBT_Type t, void *val);
 void NBT_Print_Byte_Array(unsigned char *ba, int len);
 
 void NBT_Change_Value(NBT_Tag *tag, void *val, size_t size);
+void NBT_Change_Name(NBT_Tag *tag, const char *newname);
 
 void NBT_Print_Indent(int lv);
 

@@ -306,11 +306,14 @@ long NBT_Read_Compound(NBT_File *nbt, NBT_Tag ***listptr)
         if (last == TAG_End)
         {
             //(*listptr)[++i] = NULL;
+            free((*listptr)[i]); /* This is an ugly, UGLY hack, let's remove 
+                                    this ASAP! */
+
             break;
         }
     }
 
-    return i + 1;
+    return i;
 }
 
 /* Cleanup subroutines */
@@ -600,6 +603,20 @@ void NBT_Change_Value(NBT_Tag *tag, void *val, size_t size)
     memcpy(t, val, size);
 
     tag->value = t;
+
+    return;
+}
+
+void NBT_Change_Name(NBT_Tag *tag, const char *newname)
+{
+    char *tmp = malloc(strlen(newname) + 1);
+    if (tmp != NULL)
+    {
+        strcpy(tmp, newname);
+
+        free(tag->name);
+        tag->name = tmp;
+    }
 
     return;
 }

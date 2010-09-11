@@ -39,6 +39,7 @@ int main(int argc, char **argv)
     NBT_Print_Tag(nbt->root);
 
     t = nbt->root;
+    NBT_Change_Name(t, "Supergrief");
 
     /*if (t->type == TAG_Compound)
     {
@@ -59,7 +60,7 @@ int main(int argc, char **argv)
 
     //NBT_Add_Tag("Failure By Design", TAG_String, "I BE FIRIN MAH LAZOR - BAHHHH!", 50, t);
 
-    //NBT_Print_Tag(nbt->root);
+    NBT_Print_Tag(nbt->root);
     
     NBT_Free(nbt);
 
