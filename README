@@ -6,10 +6,10 @@ Currently implemented features:
  * Complete parsing of NBT files
  * Basic modifications (Add a tag to a compound, values to a list or byte array)
  * Pretty printing
-
-Stuff on the TODO list:
-
  * Writing (possibly modified) NBT structures back to a file
+
+TODO:
+
  * More dynamic tree manipulation, easier tag creation
 
 It depends on libz for gzip decompressing (and compressing later).
