@@ -16,9 +16,9 @@
 #include "nbt.h"
 
 /* Initialization subroutine(s) */
-int NBT_Init(NBT_File **nbt)
+int nbt_init(nbt_file **nbt)
 {
-    if ((*nbt = malloc(sizeof(NBT_File))) == NULL)
+    if ((*nbt = malloc(sizeof(nbt_file))) == NULL)
         return NBT_EMEM;
 
     indent = 0;
@@ -29,25 +29,25 @@ int NBT_Init(NBT_File **nbt)
 }
 
 /* Parser */
-int NBT_Parse(NBT_File *nbt, const char *filename)
+int nbt_parse(nbt_file *nbt, const char *filename)
 {
     if ((nbt->fp = gzopen(filename, "rb")) == Z_NULL)
         return NBT_EGZ;
 
-    nbt->root = malloc(sizeof(NBT_Tag));
+    nbt->root = malloc(sizeof(nbt_tag));
     if (nbt->root == NULL)
         return NBT_EMEM;
 
-    NBT_Read_Tag(nbt, &(nbt->root));
+    nbt_read_tag(nbt, &(nbt->root));
 
     gzclose(nbt->fp);
 
     return NBT_OK;
 }
 
-int NBT_Read_Tag(NBT_File *nbt, NBT_Tag **parent)
+int nbt_read_tag(nbt_file *nbt, nbt_tag **parent)
 {
-    NBT_Type type = 0;
+    nbt_type type = 0;
 
     /* Read the type */
     gzread(nbt->fp, &type, 1);
@@ -56,66 +56,66 @@ int NBT_Read_Tag(NBT_File *nbt, NBT_Tag **parent)
     (*parent)->name = NULL;
     (*parent)->value = NULL;
 
-    if (type != TAG_End) /* TAG_End has no name */
-        NBT_Read_String(nbt, &((*parent)->name));
+    if (type != TAG_END) /* TAG_END has no name */
+        nbt_read_string(nbt, &((*parent)->name));
 
-    NBT_Read(nbt, type, &((*parent)->value));
+    nbt_read(nbt, type, &((*parent)->value));
 
     return type;
 }
 
-int NBT_Read(NBT_File *nbt, NBT_Type type, void **parent)
+int nbt_read(nbt_file *nbt, nbt_type type, void **parent)
 {
     switch (type)
     {
-        case TAG_End:
+        case TAG_END:
             break; 
 
-        case TAG_Byte:
-            NBT_Read_Byte(nbt, (char **)parent);
+        case TAG_BYTE:
+            nbt_read_byte(nbt, (char **)parent);
 
             break;
 
-        case TAG_Short:
-            NBT_Read_Short(nbt, (short **)parent);
+        case TAG_SHORT:
+            nbt_read_short(nbt, (short **)parent);
 
             break;
 
-        case TAG_Int:
-            NBT_Read_Int(nbt, (int **)parent);
+        case TAG_INT:
+            nbt_read_int(nbt, (int **)parent);
 
             break;
 
-        case TAG_Long:
-            NBT_Read_Long(nbt, (long **)parent);
+        case TAG_LONG:
+            nbt_read_long(nbt, (long **)parent);
 
             break;
 
-        case TAG_Float:
-            NBT_Read_Float(nbt, (float **)parent);
+        case TAG_FLOAT:
+            nbt_read_float(nbt, (float **)parent);
 
             break;
 
-        case TAG_Double:
-            NBT_Read_Double(nbt, (double **)parent);
+        case TAG_DOUBLE:
+            nbt_read_double(nbt, (double **)parent);
 
             break;
 
-        case TAG_String:
-            ;; /* To make it shut up about the variable declaration */
+        case TAG_STRING:
+            ;; /* to make it shut up about the variable declaration */
             char *string = NULL;
             
-            NBT_Read_String(nbt, &string);
+            nbt_read_string(nbt, &string);
             *parent = string;
 
             break;
 
-        case TAG_Byte_Array:
+        case TAG_BYTE_ARRAY:
             ;; /* ... */
             unsigned char *bytestring;
-            int len = NBT_Read_Byte_Array(nbt, &bytestring);
+            int len = nbt_read_byte_array(nbt, &bytestring);
             
-            NBT_Byte_Array *t = malloc(sizeof(NBT_Byte_Array));
+            nbt_byte_array *t = malloc(sizeof(nbt_byte_array));
             t->length = len;
             t->content = bytestring;
 
@@ -123,13 +123,13 @@ int NBT_Read(NBT_File *nbt, NBT_Type type, void **parent)
 
             break;
 
-        case TAG_List:
+        case TAG_LIST:
             ;; 
             char type;
             void **target;
-            long length = NBT_Read_List(nbt, &type, &target);
+            long length = nbt_read_list(nbt, &type, &target);
 
-            NBT_List *l = malloc(sizeof(NBT_List));
+            nbt_list *l = malloc(sizeof(nbt_list));
             l->length = length;
             l->type = type;
             l->content = target;
@@ -138,12 +138,12 @@ int NBT_Read(NBT_File *nbt, NBT_Type type, void **parent)
 
             break;
 
-        case TAG_Compound:
+        case TAG_COMPOUND:
             ;;
-            NBT_Compound *c = malloc(sizeof(NBT_Compound));
-            NBT_Tag **tags = NULL;
+            nbt_compound *c = malloc(sizeof(nbt_compound));
+            nbt_tag **tags = NULL;
 
-            long lc = NBT_Read_Compound(nbt, &tags);
+            long lc = nbt_read_compound(nbt, &tags);
 
             c->tags = tags;
             c->length = lc;
@@ -151,10 +151,10 @@ int NBT_Read(NBT_File *nbt, NBT_Type type, void **parent)
             *parent = c;
     }
     
-    return type; /* Use to abort looping in TAG_Read_Compound on TAG_End */
+    return type; /* Use to abort looping in TAG_Read_compound on TAG_END */
 }
 
-int NBT_Read_Byte(NBT_File *nbt, char **out)
+int nbt_read_byte(nbt_file *nbt, char **out)
 {
     char t;
 
@@ -166,7 +166,7 @@ int NBT_Read_Byte(NBT_File *nbt, char **out)
     return 0;
 }
 
-int NBT_Read_Short(NBT_File *nbt, short **out)
+int nbt_read_short(nbt_file *nbt, short **out)
 {
     short t;
 
@@ -181,7 +181,7 @@ int NBT_Read_Short(NBT_File *nbt, short **out)
     return 0;
 }
 
-int NBT_Read_Int(NBT_File *nbt, int **out)
+int nbt_read_int(nbt_file *nbt, int **out)
 {
     int t;
 
@@ -195,7 +195,7 @@ int NBT_Read_Int(NBT_File *nbt, int **out)
     return 0;
 }
 
-int NBT_Read_Long(NBT_File *nbt, long **out)
+int nbt_read_long(nbt_file *nbt, long **out)
 {
     long t;
 
@@ -209,7 +209,7 @@ int NBT_Read_Long(NBT_File *nbt, long **out)
     return 0;
 }
 
-int NBT_Read_Float(NBT_File *nbt, float **out)
+int nbt_read_float(nbt_file *nbt, float **out)
 {
     float t;
 
@@ -223,7 +223,7 @@ int NBT_Read_Float(NBT_File *nbt, float **out)
     return 0;
 }
 
-int NBT_Read_Double(NBT_File *nbt, double **out)
+int nbt_read_double(nbt_file *nbt, double **out)
 {
     double t;
 
@@ -237,7 +237,7 @@ int NBT_Read_Double(NBT_File *nbt, double **out)
     return 0;
 }
 
-int NBT_Read_Byte_Array(NBT_File *nbt, unsigned char **out)
+int nbt_read_byte_array(nbt_file *nbt, unsigned char **out)
 {
     int len;
 
@@ -251,7 +251,7 @@ int NBT_Read_Byte_Array(NBT_File *nbt, unsigned char **out)
     return len;
 }
 
-int NBT_Read_String(NBT_File *nbt, char **out)
+int nbt_read_string(nbt_file *nbt, char **out)
 {
     short len;
 
@@ -266,7 +266,7 @@ int NBT_Read_String(NBT_File *nbt, char **out)
     return len;
 }
 
-long NBT_Read_List(NBT_File *nbt, char *type_out, void ***target)
+long nbt_read_list(nbt_file *nbt, char *type_out, void ***target)
 {
     char type;
     int len;
@@ -284,25 +284,25 @@ long NBT_Read_List(NBT_File *nbt, char *type_out, void ***target)
     *target = malloc(len * sizeof(void *));
 
     for (i = 0; i < len; ++i)
-        NBT_Read(nbt, type, &((*target)[i]));
+        nbt_read(nbt, type, &((*target)[i]));
 
     return len;
 }
 
-long NBT_Read_Compound(NBT_File *nbt, NBT_Tag ***listptr)
+long nbt_read_compound(nbt_file *nbt, nbt_tag ***listptr)
 {
     long i;
 
-    *listptr = malloc(sizeof(NBT_Tag *)); 
+    *listptr = malloc(sizeof(nbt_tag *)); 
 
     for (i = 0;; ++i)
     {
-        (*listptr)[i] = malloc(sizeof(NBT_Tag));
-        NBT_Type last = NBT_Read_Tag(nbt, &((*listptr)[i]));
+        (*listptr)[i] = malloc(sizeof(nbt_tag));
+        nbt_type last = nbt_read_tag(nbt, &((*listptr)[i]));
 
-        *listptr = realloc(*listptr, sizeof(NBT_Tag *) * (i+2));
+        *listptr = realloc(*listptr, sizeof(nbt_tag *) * (i+2));
 
-        if (last == TAG_End)
+        if (last == TAG_END)
         {
             //(*listptr)[++i] = NULL;
             free((*listptr)[i]); /* This is an ugly, UGLY hack, let's remove 
@@ -317,60 +317,60 @@ long NBT_Read_Compound(NBT_File *nbt, NBT_Tag ***listptr)
 
 /* Cleanup subroutines */
 
-int NBT_Free(NBT_File *nbt)
+int nbt_free(nbt_file *nbt)
 {
     if (nbt->root != NULL)
-        NBT_Free_Tag(nbt->root);
+        nbt_free_tag(nbt->root);
 
     free(nbt);
 
     return NBT_OK;
 }
 
-int NBT_Free_Tag(NBT_Tag *t)
+int nbt_free_tag(nbt_tag *t)
 {
     free(t->name);
-    NBT_Free_Type(t->type, t->value);
+    nbt_free_type(t->type, t->value);
     free(t);
 
     return 0;
 }
 
-int NBT_Free_Type(NBT_Type type, void *payload)
+int nbt_free_type(nbt_type type, void *payload)
 {
     switch (type)
     {
-        case TAG_Byte:
-        case TAG_Short:
-        case TAG_Int:
-        case TAG_Long:
-        case TAG_Float:
-        case TAG_Double:
-        case TAG_String:
+        case TAG_BYTE:
+        case TAG_SHORT:
+        case TAG_INT:
+        case TAG_LONG:
+        case TAG_FLOAT:
+        case TAG_DOUBLE:
+        case TAG_STRING:
             free(payload);
             break;
-        case TAG_List:
-            NBT_Free_List(payload);
+        case TAG_LIST:
+            nbt_free_list(payload);
             break;
-        case TAG_Byte_Array:
-            NBT_Free_Byte_Array(payload);
+        case TAG_BYTE_ARRAY:
+            nbt_free_byte_array(payload);
             break;
-        case TAG_Compound:
-            NBT_Free_Compound(payload);
+        case TAG_COMPOUND:
+            nbt_free_compound(payload);
             break;
-        case TAG_End: /* Why the hell? */
+        case TAG_END: /* Why the hell? */
             return 1;
     }
 
     return 0;
 }
 
-int NBT_Free_List(NBT_List *l)
+int nbt_free_list(nbt_list *l)
 {
     int i;
 
     for (i = 0; i < l->length; ++i)
-        NBT_Free_Type(l->type, l->content[i]);
+        nbt_free_type(l->type, l->content[i]);
 
     free(l->content);
     free(l);
@@ -378,7 +378,7 @@ int NBT_Free_List(NBT_List *l)
     return 0;
 }
 
-int NBT_Free_Byte_Array(NBT_Byte_Array *a)
+int nbt_free_byte_array(nbt_byte_array *a)
 {
     free(a->content);
     free(a);
@@ -386,14 +386,14 @@ int NBT_Free_Byte_Array(NBT_Byte_Array *a)
     return 0;
 }
 
-int NBT_Free_Compound(NBT_Compound *c)
+int nbt_free_compound(nbt_compound *c)
 {
     int i;
 
     for (i = 0; i < c->length; ++i)
     {
         free(c->tags[i]->name);
-        NBT_Free_Type(c->tags[i]->type, c->tags[i]->value);
+        nbt_free_type(c->tags[i]->type, c->tags[i]->value);
         free(c->tags[i]);
     }
  
@@ -403,54 +403,54 @@ int NBT_Free_Compound(NBT_Compound *c)
     return 0;
 }
 
-char *NBT_Type_To_String(NBT_Type t)
+char *nbt_type_to_string(nbt_type t)
 {
     static char *str;
 
     switch (t)
     {
-        case TAG_End:
-            str = "TAG_End";
+        case TAG_END:
+            str = "TAG_END";
             break;
 
-        case TAG_Byte:
-            str = "TAG_Byte";
+        case TAG_BYTE:
+            str = "TAG_BYTE";
             break;
 
-        case TAG_Short:
-            str = "TAG_Short";
+        case TAG_SHORT:
+            str = "TAG_SHORT";
             break;
 
-        case TAG_Int:
-            str = "TAG_Int";
+        case TAG_INT:
+            str = "TAG_INT";
             break;
 
-        case TAG_Long:
-            str = "TAG_Long";
+        case TAG_LONG:
+            str = "TAG_LONG";
             break;
 
-        case TAG_Float:
-            str = "TAG_Float";
+        case TAG_FLOAT:
+            str = "TAG_FLOAT";
             break;
 
-        case TAG_Double:
-            str = "TAG_Double";
+        case TAG_DOUBLE:
+            str = "TAG_DOUBLE";
             break;
 
-        case TAG_Byte_Array:
-            str = "TAG_Byte_Array";
+        case TAG_BYTE_ARRAY:
+            str = "TAG_BYTE_ARRAY";
             break;
 
-        case TAG_String:
-            str = "TAG_String";
+        case TAG_STRING:
+            str = "TAG_STRING";
             break;
 
-        case TAG_List:
-            str = "TAG_List";
+        case TAG_LIST:
+            str = "TAG_LIST";
             break;
 
-        case TAG_Compound:
-            str = "TAG_Compound";
+        case TAG_COMPOUND:
+            str = "TAG_COMPOUND";
             break;
 
         default:
@@ -461,20 +461,20 @@ char *NBT_Type_To_String(NBT_Type t)
     return str;
 }
 
-void NBT_Print_Tag(NBT_Tag *t)
+void nbt_print_tag(nbt_tag *t)
 {
-    if (t->type == TAG_End)
+    if (t->type == TAG_END)
         return;
 
-    NBT_Print_Indent(indent);
+    nbt_print_indent(indent);
     printf("%s(\"%s\"): ",
-            NBT_Type_To_String(t->type),
+            nbt_type_to_string(t->type),
             t->name);
 
-    NBT_Print_Value(t->type, t->value);
+    nbt_print_value(t->type, t->value);
 }
 
-void NBT_Print_Indent(int lv)
+void nbt_print_indent(int lv)
 {
     int i = 0;
 
@@ -484,7 +484,7 @@ void NBT_Print_Indent(int lv)
     return;
 }
     
-void NBT_Print_Value(NBT_Type t, void *v)
+void nbt_print_value(nbt_type t, void *v)
 {
     int i;
 
@@ -492,74 +492,74 @@ void NBT_Print_Value(NBT_Type t, void *v)
 
     switch (t)
     {
-        case TAG_Byte:
+        case TAG_BYTE:
             printf("0x%02X (%d)", *((char *)v), *((char *)v));
             break;
 
-        case TAG_Short:
+        case TAG_SHORT:
             printf("%d", *((short *)v));
             break;
 
-        case TAG_Int:
+        case TAG_INT:
             printf("%d", *((int *)v));
             break;
 
-        case TAG_Long:
+        case TAG_LONG:
             printf("%ld", *((long *)v));
             break;
 
-        case TAG_Float:
+        case TAG_FLOAT:
             printf("%f", *((float *)v));
             break;
 
-        case TAG_Double:
+        case TAG_DOUBLE:
             printf("%f", *((double *)v));
             break;
 
-        case TAG_String:
+        case TAG_STRING:
             printf("\"%s\"", (char *)v);
             break;
 
-        case TAG_Byte_Array:
+        case TAG_BYTE_ARRAY:
             ;;
 
-            NBT_Byte_Array *arr = (NBT_Byte_Array *)v;
-            NBT_Print_Byte_Array(arr->content, arr->length);
+            nbt_byte_array *arr = (nbt_byte_array *)v;
+            nbt_print_byte_array(arr->content, arr->length);
             break;
 
-        case TAG_Compound:
+        case TAG_COMPOUND:
             ;;
-            NBT_Compound *c = (NBT_Compound *)v;
+            nbt_compound *c = (nbt_compound *)v;
             
             printf("(%ld entries) { \n", c->length);
             indent++;
 
             for (i = 0; i < c->length; ++i)
-                NBT_Print_Tag(c->tags[i]);
+                nbt_print_tag(c->tags[i]);
 
-            NBT_Print_Indent(--indent);
+            nbt_print_indent(--indent);
             printf("}\n");
 
             break;
 
-        case TAG_List:
+        case TAG_LIST:
             ;;
-            NBT_List *l = (NBT_List *)v;
+            nbt_list *l = (nbt_list *)v;
 
             printf("(%d entries) { \n", l->length);
             indent++;
 
             for (i = 0; i < l->length; ++i)
             {
-                NBT_Print_Indent(indent);
+                nbt_print_indent(indent);
 
-                printf("%s: ", NBT_Type_To_String(l->type));
+                printf("%s: ", nbt_type_to_string(l->type));
                 void **content = l->content;
-                NBT_Print_Value(l->type, content[i]);
+                nbt_print_value(l->type, content[i]);
 
             }
 
-            NBT_Print_Indent(--indent);
+            nbt_print_indent(--indent);
             printf("}\n");
 
             break;
@@ -573,7 +573,7 @@ void NBT_Print_Value(NBT_Type t, void *v)
     return;
 }
 
-void NBT_Print_Byte_Array(unsigned char *ba, int len)
+void nbt_print_byte_array(unsigned char *ba, int len)
 {
     int i;
 
@@ -593,9 +593,9 @@ void NBT_Print_Byte_Array(unsigned char *ba, int len)
     return;
 }
 
-void NBT_Change_Value(NBT_Tag *tag, void *val, size_t size)
+void nbt_change_value(nbt_tag *tag, void *val, size_t size)
 {
-    NBT_Free_Type(tag->type, tag->value);
+    nbt_free_type(tag->type, tag->value);
 
     void *t = malloc(size);
     memcpy(t, val, size);
@@ -605,7 +605,7 @@ void NBT_Change_Value(NBT_Tag *tag, void *val, size_t size)
     return;
 }
 
-void NBT_Change_Name(NBT_Tag *tag, const char *newname)
+void nbt_change_name(nbt_tag *tag, const char *newname)
 {
     char *tmp = malloc(strlen(newname) + 1);
     if (tmp != NULL)
@@ -619,34 +619,34 @@ void NBT_Change_Name(NBT_Tag *tag, const char *newname)
     return;
 }
 
-NBT_Tag *NBT_Add_Tag(const char *name, 
-                 NBT_Type type,
+nbt_tag *nbt_add_Tag(const char *name, 
+                 nbt_type type,
                  void *val,
                  size_t size,
-                 NBT_Tag *parent)
+                 nbt_tag *parent)
 {
-    NBT_Tag *res;
+    nbt_tag *res;
 
-    if (parent->type == TAG_Compound)
+    if (parent->type == TAG_COMPOUND)
     {
-        NBT_Compound *c = (NBT_Compound *)parent->value;
+        nbt_compound *c = (nbt_compound *)parent->value;
 
-        res = NBT_Add_Tag_To_Compound(name, type, val, size, c);
+        res = nbt_add_tag_to_compound(name, type, val, size, c);
     }
-    else if (parent->type == TAG_List)
+    else if (parent->type == TAG_LIST)
     {
-        NBT_List *l = (NBT_List *)parent->value;
+        nbt_list *l = (nbt_list *)parent->value;
 
         if (l->type == type)
-            NBT_Add_Item_To_List(val, size, l);
+            nbt_add_item_to_list(val, size, l);
 
         res = NULL;
     }
-    else if ((parent->type == TAG_Byte_Array) && (type == TAG_Byte))
+    else if ((parent->type == TAG_BYTE_ARRAY) && (type == TAG_BYTE))
     {
-        NBT_Byte_Array *ba = (NBT_Byte_Array *)parent->value;
+        nbt_byte_array *ba = (nbt_byte_array *)parent->value;
 
-        NBT_Add_Byte_To_Array(val, ba);
+        nbt_add_byte_to_array(val, ba);
 
         res = NULL;
     }
@@ -656,19 +656,19 @@ NBT_Tag *NBT_Add_Tag(const char *name,
     return res;
 }
 
-NBT_Tag *NBT_Add_Tag_To_Compound(const char *name,
-                            NBT_Type type,
+nbt_tag *nbt_add_tag_to_compound(const char *name,
+                            nbt_type type,
                             void *val,
                             size_t size,
-                            NBT_Compound *parent)
+                            nbt_compound *parent)
 {
-    NBT_Tag **tags_temp = NULL;
+    nbt_tag **tags_temp = NULL;
     tags_temp = realloc(parent->tags, 
-                        sizeof(NBT_Tag *) * (parent->length + 1));
+                        sizeof(nbt_tag *) * (parent->length + 1));
 
     if (tags_temp != NULL)
     {
-        NBT_Tag *temp = malloc(sizeof(NBT_Tag));
+        nbt_tag *temp = malloc(sizeof(nbt_tag));
         if (temp != NULL)
         {
             parent->tags = tags_temp;
@@ -691,7 +691,7 @@ NBT_Tag *NBT_Add_Tag_To_Compound(const char *name,
     return NULL;
 }
 
-void NBT_Add_Item_To_List(void *val, size_t size, NBT_List *parent)
+void nbt_add_item_to_list(void *val, size_t size, nbt_list *parent)
 {
     void **temp = realloc(parent->content, sizeof(void *) * (parent->length + 1));
     if (temp != NULL)
@@ -712,7 +712,7 @@ void NBT_Add_Item_To_List(void *val, size_t size, NBT_List *parent)
     return;
 }
 
-void NBT_Add_Byte_To_Array(char *val, NBT_Byte_Array *parent)
+void nbt_add_byte_to_array(char *val, nbt_byte_array *parent)
 {
     unsigned char *temp = realloc(parent->content, (parent->length + 1));
     if (temp != NULL)
@@ -725,30 +725,30 @@ void NBT_Add_Byte_To_Array(char *val, NBT_Byte_Array *parent)
     return;
 }
 
-void NBT_Remove_Tag(NBT_Tag *target, NBT_Tag *parent)
+void nbt_remove_tag(nbt_tag *target, nbt_tag *parent)
 {
     int i;
     int count = 0;
-    NBT_Tag **templist = NULL;
-    NBT_Compound *tmp = (NBT_Compound *)parent->value;
+    nbt_tag **templist = NULL;
+    nbt_compound *tmp = (nbt_compound *)parent->value;
 
-    if (parent->type != TAG_Compound)
+    if (parent->type != TAG_COMPOUND)
         return;
 
-    templist = malloc(sizeof(NBT_Tag *));
+    templist = malloc(sizeof(nbt_tag *));
 
     for (i = 0; i < tmp->length; ++i)
     {
         if (tmp->tags[i] != target)
         {
             templist[count] = tmp->tags[i];
-            templist = realloc(templist, sizeof(NBT_Tag *) * (count+2));
+            templist = realloc(templist, sizeof(nbt_tag *) * (count+2));
 
             ++count;
         }
         else
         {
-            NBT_Free_Tag(tmp->tags[i]);
+            nbt_free_tag(tmp->tags[i]);
         }
     }
 
@@ -759,11 +759,11 @@ void NBT_Remove_Tag(NBT_Tag *target, NBT_Tag *parent)
     return;
 }
 
-NBT_Tag *NBT_Find_Tag_By_Name(const char *needle, NBT_Tag *haystack)
+nbt_tag *nbt_find_tag_by_name(const char *needle, nbt_tag *haystack)
 {
-    if (haystack->type == TAG_Compound)
+    if (haystack->type == TAG_COMPOUND)
     {
-        NBT_Compound *c = (NBT_Compound *)haystack->value;
+        nbt_compound *c = (nbt_compound *)haystack->value;
         int i;
 
         for (i = 0; i < c->length; ++i)
@@ -774,14 +774,14 @@ NBT_Tag *NBT_Find_Tag_By_Name(const char *needle, NBT_Tag *haystack)
     return NULL;
 }
 
-int NBT_Write(NBT_File *nbt, const char *filename)
+int nbt_write(nbt_file *nbt, const char *filename)
 {
     if ((nbt->fp = gzopen(filename, "wb")) == Z_NULL)
         return NBT_EGZ;
 
     if (nbt->root != NULL)
     {
-        int size = NBT_Write_Tag(nbt, nbt->root);
+        int size = nbt_write_tag(nbt, nbt->root);
 
         gzclose(nbt->fp);
 
@@ -791,24 +791,24 @@ int NBT_Write(NBT_File *nbt, const char *filename)
     return NBT_ERR;
 }
 
-int NBT_Write_Tag(NBT_File *nbt, NBT_Tag *tag)
+int nbt_write_tag(nbt_file *nbt, nbt_tag *tag)
 {
     int size = 0;
 
     size += gzwrite(nbt->fp, &(tag->type), sizeof(char));
 
-    if (tag->type != TAG_End)
+    if (tag->type != TAG_END)
     {
         printf("Writing tag: %s\n", tag->name);
-        /* Every tag but TAG_End has a name */
-        size += NBT_Write_String(nbt, tag->name);
-        size += NBT_Write_Value(nbt, tag->type, tag->value);
+        /* Every tag but TAG_END has a name */
+        size += nbt_write_string(nbt, tag->name);
+        size += nbt_write_value(nbt, tag->type, tag->value);
     }
 
     return size;
 }
 
-int NBT_Write_Value(NBT_File *nbt, NBT_Type t, void *value)
+int nbt_write_value(nbt_file *nbt, nbt_type t, void *value)
 {
     int written = 0;
 
@@ -816,56 +816,56 @@ int NBT_Write_Value(NBT_File *nbt, NBT_Type t, void *value)
 
     switch (t)
     {
-        case TAG_End: /* WHY is this even in? */
+        case TAG_END: /* WHY is this even in? */
             break;
 
-        case TAG_Byte:
-            written = NBT_Write_Byte(nbt, (char *)value);
-
-            break;
-
-        case TAG_Short:
-            written = NBT_Write_Short(nbt, (short *)value);
+        case TAG_BYTE:
+            written = nbt_write_byte(nbt, (char *)value);
 
             break;
 
-        case TAG_Int:
-            written = NBT_Write_Int(nbt, (int *)value);
+        case TAG_SHORT:
+            written = nbt_write_short(nbt, (short *)value);
 
             break;
 
-        case TAG_Long:
-            written = NBT_Write_Long(nbt, (long *)value);
+        case TAG_INT:
+            written = nbt_write_int(nbt, (int *)value);
 
             break;
 
-        case TAG_Float:
-            written = NBT_Write_Float(nbt, (float *)value);
+        case TAG_LONG:
+            written = nbt_write_long(nbt, (long *)value);
 
             break;
 
-        case TAG_Double:
-            written = NBT_Write_Double(nbt, (double *)value);
+        case TAG_FLOAT:
+            written = nbt_write_float(nbt, (float *)value);
 
             break;
 
-        case TAG_String:
-            written = NBT_Write_String(nbt, (char *)value);
+        case TAG_DOUBLE:
+            written = nbt_write_double(nbt, (double *)value);
 
             break;
 
-        case TAG_Byte_Array:
-            written = NBT_Write_Byte_Array(nbt, (NBT_Byte_Array *)value);
+        case TAG_STRING:
+            written = nbt_write_string(nbt, (char *)value);
 
             break;
 
-        case TAG_List:
-            written = NBT_Write_List(nbt, (NBT_List *)value);
+        case TAG_BYTE_ARRAY:
+            written = nbt_write_byte_array(nbt, (nbt_byte_array *)value);
 
             break;
 
-        case TAG_Compound:
-            written = NBT_Write_Compound(nbt, (NBT_Compound *)value);
+        case TAG_LIST:
+            written = nbt_write_list(nbt, (nbt_list *)value);
+
+            break;
+
+        case TAG_COMPOUND:
+            written = nbt_write_compound(nbt, (nbt_compound *)value);
 
             break;
 
@@ -878,13 +878,13 @@ int NBT_Write_Value(NBT_File *nbt, NBT_Type t, void *value)
     return written;
 }
 
-int NBT_Write_Byte(NBT_File *nbt, char *val)
+int nbt_write_byte(nbt_file *nbt, char *val)
 {
-    /* Bytes, simple enough */
+    /* bytes, simple enough */
     return gzwrite(nbt->fp, val, sizeof(char));
 }
 
-int NBT_Write_Short(NBT_File *nbt, short *val)
+int nbt_write_short(nbt_file *nbt, short *val)
 {
     short temp = *val;
 
@@ -895,7 +895,7 @@ int NBT_Write_Short(NBT_File *nbt, short *val)
     return gzwrite(nbt->fp, &temp, sizeof(short));
 }
 
-int NBT_Write_Int(NBT_File *nbt, int *val)
+int nbt_write_int(nbt_file *nbt, int *val)
 {
     int temp = *val;
 
@@ -905,7 +905,7 @@ int NBT_Write_Int(NBT_File *nbt, int *val)
     return gzwrite(nbt->fp, &temp, sizeof(int));
 }
 
-int NBT_Write_Long(NBT_File *nbt, long *val)
+int nbt_write_long(nbt_file *nbt, long *val)
 {
     long temp = *val;
 
@@ -915,7 +915,7 @@ int NBT_Write_Long(NBT_File *nbt, long *val)
     return gzwrite(nbt->fp, &temp, sizeof(long));
 }
 
-int NBT_Write_Float(NBT_File *nbt, float *val)
+int nbt_write_float(nbt_file *nbt, float *val)
 {
     float temp = *val;
 
@@ -925,7 +925,7 @@ int NBT_Write_Float(NBT_File *nbt, float *val)
     return gzwrite(nbt->fp, &temp, sizeof(float));
 }
 
-int NBT_Write_Double(NBT_File *nbt, double *val)
+int nbt_write_double(nbt_file *nbt, double *val)
 {
     double temp = *val;
 
@@ -935,13 +935,13 @@ int NBT_Write_Double(NBT_File *nbt, double *val)
     return gzwrite(nbt->fp, &temp, sizeof(double));
 }
 
-int NBT_Write_String(NBT_File *nbt, char *val)
+int nbt_write_string(nbt_file *nbt, char *val)
 {
     int size = 0;
     short len = strlen(val);
 
     /* Write length first */
-    size += NBT_Write_Short(nbt, &len);
+    size += nbt_write_short(nbt, &len);
 
     /* Write content */
     size += gzwrite(nbt->fp, val, len);
@@ -949,41 +949,40 @@ int NBT_Write_String(NBT_File *nbt, char *val)
     return size;
 }
 
-int NBT_Write_Byte_Array(NBT_File *nbt, NBT_Byte_Array *val)
+int nbt_write_byte_array(nbt_file *nbt, nbt_byte_array *val)
 {
     int size = 0;
     
     /* Length first again, then content */
-    size += NBT_Write_Int(nbt, &(val->length));
+    size += nbt_write_int(nbt, &(val->length));
     size += gzwrite(nbt->fp, val->content, val->length);
 
     return size;
 }
 
-int NBT_Write_List(NBT_File *nbt, NBT_List *val)
+int nbt_write_list(nbt_file *nbt, nbt_list *val)
 {
     int i;
     int size = 0;
 
     /* Write type id first */
-    size += NBT_Write_Byte(nbt, (char *)&(val->type));
-    size += NBT_Write_Int(nbt, &(val->length));
+    size += nbt_write_byte(nbt, (char *)&(val->type));
 
     printf("Writing %d entries\n", val->length);
     for (i = 0; i < val->length; ++i)
-        size += NBT_Write_Value(nbt, val->type, val->content[i]);
+        size += nbt_write_value(nbt, val->type, val->content[i]);
 
     return size;    
 }
 
-int NBT_Write_Compound(NBT_File *nbt, NBT_Compound *val)
+int nbt_write_compound(nbt_file *nbt, nbt_compound *val)
 {
     int endtag = 0;
     int i;
     int size = 0;
 
     for (i = 0; i < val->length; ++i)
-        size += NBT_Write_Tag(nbt, val->tags[i]);
+        size += nbt_write_tag(nbt, val->tags[i]);
 
     size += gzwrite(nbt->fp, &endtag, sizeof(char));
 

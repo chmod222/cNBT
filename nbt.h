@@ -16,149 +16,142 @@ extern "C" {
 
 #include <zlib.h>
 
-typedef enum NBT_Status
+typedef enum nbt_status
 {
     NBT_OK   = 0,
     NBT_ERR  = -1,
     NBT_EMEM = -2,
     NBT_EGZ  = -3
 
-} NBT_Status;
+} nbt_status;
 
-typedef enum NBT_Type
+typedef enum nbt_type
 {
-   TAG_End        = 0, /* No name, no payload */
-   TAG_Byte       = 1, /* char, 8 bits, signed */
-   TAG_Short      = 2, /* short, 16 bits, signed */
-   TAG_Int        = 3, /* long, 32 bits, signed */
-   TAG_Long       = 4, /* long long, 64 bits, signed */
-   TAG_Float      = 5, /* float, 32 bits, signed */
-   TAG_Double     = 6, /* double, 64 bits, signed */
-   TAG_Byte_Array = 7, /* char *, 8 bits, unsigned, TAG_Int length */
-   TAG_String     = 8, /* char *, 8 bits, signed, TAG_Short length */
-   TAG_List       = 9, /* X *, X bits, TAG_Int length, no names inside */
-   TAG_Compound   = 10 /* NBT_Tag * */
+   TAG_END        = 0, /* No name, no payload */
+   TAG_BYTE       = 1, /* char, 8 bits, signed */
+   TAG_SHORT      = 2, /* short, 16 bits, signed */
+   TAG_INT        = 3, /* long, 32 bits, signed */
+   TAG_LONG       = 4, /* long long, 64 bits, signed */
+   TAG_FLOAT      = 5, /* float, 32 bits, signed */
+   TAG_DOUBLE     = 6, /* double, 64 bits, signed */
+   TAG_BYTE_ARRAY = 7, /* char *, 8 bits, unsigned, TAG_INT length */
+   TAG_STRING     = 8, /* char *, 8 bits, signed, TAG_SHORT length */
+   TAG_LIST       = 9, /* X *, X bits, TAG_INT length, no names inside */
+   TAG_COMPOUND   = 10 /* nbt_tag * */
 
-} NBT_Type;
+} nbt_type;
 
-typedef struct NBT_Tag
+typedef struct nbt_tag
 {
-    NBT_Type type; /* Type of the value */
-    char *name;    /* Tag name */
+    nbt_type type; /* Type of the value */
+    char *name;    /* tag name */
     
-    void *value;   /* Value to be casted to the corresponding type */
+    void *value;   /* value to be casted to the corresponding type */
 
-} NBT_Tag;
+} nbt_tag;
 
-typedef struct NBT_Byte_Array
+typedef struct nbt_byte_array
 {
     int length;
     unsigned char *content;
 
-} NBT_Byte_Array;
+} nbt_byte_array;
 
-typedef struct NBT_List
+typedef struct nbt_list
 {
     int length;
-    NBT_Type type;
+    nbt_type type;
 
     void **content;
-} NBT_List;
+} nbt_list;
 
-typedef struct NBT_Compound
+typedef struct nbt_compound
 {
     long length;
-    NBT_Tag **tags;
+    nbt_tag **tags;
 
-} NBT_Compound;
+} nbt_compound;
 
-typedef struct NBT_File
+typedef struct nbt_file
 {
     gzFile fp;
-    NBT_Tag *root;
-} NBT_File;
+    nbt_tag *root;
+} nbt_file;
 
-int NBT_Init(NBT_File **nbf);
-int NBT_Free(NBT_File *nbf);
-int NBT_Free_Tag(NBT_Tag *tag);
-int NBT_Free_Type(NBT_Type t, void *v);
+int nbt_init(nbt_file **nbf);
+int nbt_free(nbt_file *nbf);
+int nbt_free_tag(nbt_tag *tag);
+int nbt_free_type(nbt_type t, void *v);
 
 /* Freeing special tags */
-int NBT_Free_List(NBT_List *l);
-int NBT_Free_Byte_Array(NBT_Byte_Array *a);
-int NBT_Free_Compound(NBT_Compound *c);
+int nbt_free_list(nbt_list *l);
+int nbt_free_byte_array(nbt_byte_array *a);
+int nbt_free_compound(nbt_compound *c);
 
 /* Parsing */
-int NBT_Parse(NBT_File *nbt, const char *filename);
-int NBT_Read_Tag(NBT_File *nbt, NBT_Tag **parent);
-int NBT_Read(NBT_File *nbt, NBT_Type type, void **parent);
+int nbt_parse(nbt_file *nbt, const char *filename);
+int nbt_read_tag(nbt_file *nbt, nbt_tag **parent);
+int nbt_read(nbt_file *nbt, nbt_type type, void **parent);
 
-int NBT_Read_Byte(NBT_File *nbt, char **out);
-int NBT_Read_Short(NBT_File *nbt, short **out);
-int NBT_Read_Int(NBT_File *nbt, int **out);
-int NBT_Read_Long(NBT_File *nbt, long **out);
-int NBT_Read_Float(NBT_File *nbt, float **out);
-int NBT_Read_Double(NBT_File *nbt, double **out);
-int NBT_Read_Byte_Array(NBT_File *nbt, unsigned char **out);
-int NBT_Read_String(NBT_File *nbt, char **out);
-long NBT_Read_List(NBT_File *nbt, char *type_out, void ***target);
-long NBT_Read_Compound(NBT_File *nbt, NBT_Tag ***tagslist); /* Pointer an arr */
+int nbt_read_byte(nbt_file *nbt, char **out);
+int nbt_read_short(nbt_file *nbt, short **out);
+int nbt_read_int(nbt_file *nbt, int **out);
+int nbt_read_long(nbt_file *nbt, long **out);
+int nbt_read_float(nbt_file *nbt, float **out);
+int nbt_read_double(nbt_file *nbt, double **out);
+int nbt_read_byte_array(nbt_file *nbt, unsigned char **out);
+int nbt_read_string(nbt_file *nbt, char **out);
+long nbt_read_list(nbt_file *nbt, char *type_out, void ***target);
+long nbt_read_compound(nbt_file *nbt, nbt_tag ***tagslist); /* Pointer an arr */
 
-char *NBT_Type_To_String(NBT_Type t);
+char *nbt_type_to_string(nbt_type t);
 
-void NBT_Print_Tag(NBT_Tag *t);
-void NBT_Print_Value(NBT_Type t, void *val);
-void NBT_Print_Byte_Array(unsigned char *ba, int len);
+void nbt_print_tag(nbt_tag *t);
+void nbt_print_value(nbt_type t, void *val);
+void nbt_print_byte_array(unsigned char *ba, int len);
 
-void NBT_Change_Value(NBT_Tag *tag, void *val, size_t size);
-void NBT_Change_Name(NBT_Tag *tag, const char *newname);
+void nbt_change_value(nbt_tag *tag, void *val, size_t size);
+void nbt_change_name(nbt_tag *tag, const char *newname);
 
-void NBT_Print_Indent(int lv);
+void nbt_print_indent(int lv);
 
-NBT_Tag *NBT_Add_Tag(
+nbt_tag *nbt_add_tag(
         const char *name,
-        NBT_Type type,
+        nbt_type type,
         void *val,
         size_t size,
-        NBT_Tag *parent);
+        nbt_tag *parent);
 
-NBT_Tag *NBT_Add_Tag_To_Compound(
+nbt_tag *nbt_add_tag_to_compound(
         const char *name,
-        NBT_Type type,
+        nbt_type type,
         void *val,
         size_t size,
-        NBT_Compound *parent);
+        nbt_compound *parent);
 
-void NBT_Add_Item_To_List(void *val, size_t size, NBT_List *parent);
-void NBT_Add_Byte_To_Array(char *val, NBT_Byte_Array *ba);
+void nbt_add_item_to_list(void *val, size_t size, nbt_list *parent);
+void nbt_add_byte_to_array(char *val, nbt_byte_array *ba);
 
-void NBT_Remove_Tag(NBT_Tag *target, NBT_Tag *parent);
+void nbt_remove_tag(nbt_tag *target, nbt_tag *parent);
 
-NBT_Tag *NBT_Find_Tag_By_Name(const char *needle, NBT_Tag *haystack);
+nbt_tag *nbt_find_tag_by_name(const char *needle, nbt_tag *haystack);
 
-int NBT_Write(NBT_File *nbt, const char *filename); 
-int NBT_Write_Tag(NBT_File *nbt, NBT_Tag *tag);
-int NBT_Write_Value(NBT_File *nbt, NBT_Type t, void *val);
+int nbt_write(nbt_file *nbt, const char *filename); 
+int nbt_write_tag(nbt_file *nbt, nbt_tag *tag);
+int nbt_write_value(nbt_file *nbt, nbt_type t, void *val);
 
-int NBT_Write_Byte(NBT_File *nbt, char *val);
-int NBT_Write_Short(NBT_File *nbt, short *val);
-int NBT_Write_Int(NBT_File *nbt, int *val);
-int NBT_Write_Long(NBT_File *nbt, long *val);
-int NBT_Write_Float(NBT_File *nbt, float *val);
-int NBT_Write_Double(NBT_File *nbt, double *val);
-int NBT_Write_String(NBT_File *nbt, char *val);
-int NBT_Write_Byte_Array(NBT_File *nbt, NBT_Byte_Array *val);
-int NBT_Write_List(NBT_File *nbt, NBT_List *val);
-int NBT_Write_Compound(NBT_File *nbt, NBT_Compound *val);
+int nbt_write_byte(nbt_file *nbt, char *val);
+int nbt_write_short(nbt_file *nbt, short *val);
+int nbt_write_int(nbt_file *nbt, int *val);
+int nbt_write_long(nbt_file *nbt, long *val);
+int nbt_write_float(nbt_file *nbt, float *val);
+int nbt_write_double(nbt_file *nbt, double *val);
+int nbt_write_string(nbt_file *nbt, char *val);
+int nbt_write_byte_array(nbt_file *nbt, nbt_byte_array *val);
+int nbt_write_list(nbt_file *nbt, nbt_list *val);
+int nbt_write_compound(nbt_file *nbt, nbt_compound *val);
 
 #define DEBUG 1
-
-/* Let's try an unwrapped "char *" first, shall we?
-typedef struct NBT_String
-{
-    short length;
-    char *content;
-}*/
 
 int indent;
 

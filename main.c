@@ -76,10 +76,10 @@ int main(int argc, char **argv)
 
 void dump_nbt(char *filename)
 {
-    NBT_File *nbt = NULL;
+    nbt_file *nbt = NULL;
 
     /* Enough parameters given? */
-    if (NBT_Init(&nbt) != NBT_OK)
+    if (nbt_init(&nbt) != NBT_OK)
     {
         fprintf(stderr, "NBT_Init(): Failure initializing\n");
 
@@ -87,13 +87,13 @@ void dump_nbt(char *filename)
     }
 
     /* Try parsing */
-    NBT_Parse(nbt, filename);
-    NBT_Print_Tag(nbt->root);
+    nbt_parse(nbt, filename);
+    nbt_print_tag(nbt->root);
 
     if (opt_dupe)
-        NBT_Write(nbt, "out.nbt");
+        nbt_write(nbt, "out.nbt");
 
-    NBT_Free(nbt);
+    nbt_free(nbt);
 
     return;
 }
