@@ -16,6 +16,8 @@
 #include "endianness.h"
 #include "nbt.h"
 
+static int opt_dupe = 0;
+
 void dump_nbt(char *filename);
 
 int main(int argc, char **argv)
@@ -31,6 +33,7 @@ int main(int argc, char **argv)
         {
             {"dump",    no_argument, &opt_dump, 1},
             {"version", no_argument, NULL, 'v'},
+            {"copy",    no_argument, &opt_dupe, 1},
             {NULL,      no_argument, NULL, 0}
         };
 
@@ -76,17 +79,20 @@ void dump_nbt(char *filename)
     NBT_File *nbt = NULL;
 
     /* Enough parameters given? */
-    if (NBT_Init(&nbt, filename) != NBT_OK)
+    if (NBT_Init(&nbt) != NBT_OK)
     {
         fprintf(stderr, "NBT_Init(): Failure initializing\n");
-        fprintf(stderr, "File: %s\n", filename);
 
         return;
     }
 
     /* Try parsing */
-    NBT_Parse(nbt);
+    NBT_Parse(nbt, filename);
     NBT_Print_Tag(nbt->root);
+
+    if (opt_dupe)
+        NBT_Write(nbt, "out.nbt");
+
     NBT_Free(nbt);
 
     return;

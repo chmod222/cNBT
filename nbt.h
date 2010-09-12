@@ -19,8 +19,9 @@ extern "C" {
 typedef enum NBT_Status
 {
     NBT_OK   = 0,
-    NBT_EMEM = 1,
-    NBT_EGZ  = 2
+    NBT_ERR  = -1,
+    NBT_EMEM = -2,
+    NBT_EGZ  = -3
 
 } NBT_Status;
 
@@ -51,7 +52,7 @@ typedef struct NBT_Tag
 
 typedef struct NBT_Byte_Array
 {
-    long length;
+    int length;
     unsigned char *content;
 
 } NBT_Byte_Array;
@@ -77,7 +78,7 @@ typedef struct NBT_File
     NBT_Tag *root;
 } NBT_File;
 
-int NBT_Init(NBT_File **nbf, const char *filename);
+int NBT_Init(NBT_File **nbf);
 int NBT_Free(NBT_File *nbf);
 int NBT_Free_Tag(NBT_Tag *tag);
 int NBT_Free_Type(NBT_Type t, void *v);
@@ -88,7 +89,7 @@ int NBT_Free_Byte_Array(NBT_Byte_Array *a);
 int NBT_Free_Compound(NBT_Compound *c);
 
 /* Parsing */
-int NBT_Parse(NBT_File *nbt);
+int NBT_Parse(NBT_File *nbt, const char *filename);
 int NBT_Read_Tag(NBT_File *nbt, NBT_Tag **parent);
 int NBT_Read(NBT_File *nbt, NBT_Type type, void **parent);
 
@@ -114,22 +115,41 @@ void NBT_Change_Name(NBT_Tag *tag, const char *newname);
 
 void NBT_Print_Indent(int lv);
 
-void NBT_Add_Tag(const char *name,
-                 NBT_Type type,
-                 void *val,
-                 size_t size,
-                 NBT_Tag *parent);
-void NBT_Add_Tag_To_Compound(const char *name,
-                            NBT_Type type,
-                            void *val,
-                            size_t size,
-                            NBT_Compound *parent);
+NBT_Tag *NBT_Add_Tag(
+        const char *name,
+        NBT_Type type,
+        void *val,
+        size_t size,
+        NBT_Tag *parent);
+
+NBT_Tag *NBT_Add_Tag_To_Compound(
+        const char *name,
+        NBT_Type type,
+        void *val,
+        size_t size,
+        NBT_Compound *parent);
+
 void NBT_Add_Item_To_List(void *val, size_t size, NBT_List *parent);
 void NBT_Add_Byte_To_Array(char *val, NBT_Byte_Array *ba);
 
 void NBT_Remove_Tag(NBT_Tag *target, NBT_Tag *parent);
 
 NBT_Tag *NBT_Find_Tag_By_Name(const char *needle, NBT_Tag *haystack);
+
+int NBT_Write(NBT_File *nbt, const char *filename); 
+int NBT_Write_Tag(NBT_File *nbt, NBT_Tag *tag);
+int NBT_Write_Value(NBT_File *nbt, NBT_Type t, void *val);
+
+int NBT_Write_Byte(NBT_File *nbt, char *val);
+int NBT_Write_Short(NBT_File *nbt, short *val);
+int NBT_Write_Int(NBT_File *nbt, int *val);
+int NBT_Write_Long(NBT_File *nbt, long *val);
+int NBT_Write_Float(NBT_File *nbt, float *val);
+int NBT_Write_Double(NBT_File *nbt, double *val);
+int NBT_Write_String(NBT_File *nbt, char *val);
+int NBT_Write_Byte_Array(NBT_File *nbt, NBT_Byte_Array *val);
+int NBT_Write_List(NBT_File *nbt, NBT_List *val);
+int NBT_Write_Compound(NBT_File *nbt, NBT_Compound *val);
 
 #define DEBUG 1
 

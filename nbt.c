@@ -16,16 +16,10 @@
 #include "nbt.h"
 
 /* Initialization subroutine(s) */
-int NBT_Init(NBT_File **nbt, const char *filename)
+int NBT_Init(NBT_File **nbt)
 {
     if ((*nbt = malloc(sizeof(NBT_File))) == NULL)
         return NBT_EMEM;
-
-    if (((*nbt)->fp = gzopen(filename, "rb")) == Z_NULL)
-    {
-        free(*nbt);
-        return NBT_EGZ;
-    }
 
     indent = 0;
 
@@ -35,13 +29,18 @@ int NBT_Init(NBT_File **nbt, const char *filename)
 }
 
 /* Parser */
-int NBT_Parse(NBT_File *nbt)
+int NBT_Parse(NBT_File *nbt, const char *filename)
 {
+    if ((nbt->fp = gzopen(filename, "rb")) == Z_NULL)
+        return NBT_EGZ;
+
     nbt->root = malloc(sizeof(NBT_Tag));
     if (nbt->root == NULL)
         return NBT_EMEM;
 
     NBT_Read_Tag(nbt, &(nbt->root));
+
+    gzclose(nbt->fp);
 
     return NBT_OK;
 }
@@ -323,7 +322,6 @@ int NBT_Free(NBT_File *nbt)
     if (nbt->root != NULL)
         NBT_Free_Tag(nbt->root);
 
-    gzclose(nbt->fp);
     free(nbt);
 
     return NBT_OK;
@@ -621,17 +619,19 @@ void NBT_Change_Name(NBT_Tag *tag, const char *newname)
     return;
 }
 
-void NBT_Add_Tag(const char *name, 
+NBT_Tag *NBT_Add_Tag(const char *name, 
                  NBT_Type type,
                  void *val,
                  size_t size,
                  NBT_Tag *parent)
 {
+    NBT_Tag *res;
+
     if (parent->type == TAG_Compound)
     {
         NBT_Compound *c = (NBT_Compound *)parent->value;
 
-        NBT_Add_Tag_To_Compound(name, type, val, size, c);
+        res = NBT_Add_Tag_To_Compound(name, type, val, size, c);
     }
     else if (parent->type == TAG_List)
     {
@@ -639,18 +639,24 @@ void NBT_Add_Tag(const char *name,
 
         if (l->type == type)
             NBT_Add_Item_To_List(val, size, l);
+
+        res = NULL;
     }
     else if ((parent->type == TAG_Byte_Array) && (type == TAG_Byte))
     {
         NBT_Byte_Array *ba = (NBT_Byte_Array *)parent->value;
 
         NBT_Add_Byte_To_Array(val, ba);
+
+        res = NULL;
     }
     else
-        return;
+        return NULL;
+
+    return res;
 }
 
-void NBT_Add_Tag_To_Compound(const char *name,
+NBT_Tag *NBT_Add_Tag_To_Compound(const char *name,
                             NBT_Type type,
                             void *val,
                             size_t size,
@@ -677,11 +683,12 @@ void NBT_Add_Tag_To_Compound(const char *name,
             memcpy(temp->value, val, size);
 
             parent->tags[parent->length - 1] = temp;
-            //parent->tags[parent->length - 1] = NULL;
+
+            return temp;
         }
     }
 
-    return;
+    return NULL;
 }
 
 void NBT_Add_Item_To_List(void *val, size_t size, NBT_List *parent)
@@ -765,4 +772,220 @@ NBT_Tag *NBT_Find_Tag_By_Name(const char *needle, NBT_Tag *haystack)
     }
 
     return NULL;
+}
+
+int NBT_Write(NBT_File *nbt, const char *filename)
+{
+    if ((nbt->fp = gzopen(filename, "wb")) == Z_NULL)
+        return NBT_EGZ;
+
+    if (nbt->root != NULL)
+    {
+        int size = NBT_Write_Tag(nbt, nbt->root);
+
+        gzclose(nbt->fp);
+
+        return size;
+    }
+   
+    return NBT_ERR;
+}
+
+int NBT_Write_Tag(NBT_File *nbt, NBT_Tag *tag)
+{
+    int size = 0;
+
+    size += gzwrite(nbt->fp, &(tag->type), sizeof(char));
+
+    if (tag->type != TAG_End)
+    {
+        printf("Writing tag: %s\n", tag->name);
+        /* Every tag but TAG_End has a name */
+        size += NBT_Write_String(nbt, tag->name);
+        size += NBT_Write_Value(nbt, tag->type, tag->value);
+    }
+
+    return size;
+}
+
+int NBT_Write_Value(NBT_File *nbt, NBT_Type t, void *value)
+{
+    int written = 0;
+
+    printf("Writing type 0x%02X\n", t);
+
+    switch (t)
+    {
+        case TAG_End: /* WHY is this even in? */
+            break;
+
+        case TAG_Byte:
+            written = NBT_Write_Byte(nbt, (char *)value);
+
+            break;
+
+        case TAG_Short:
+            written = NBT_Write_Short(nbt, (short *)value);
+
+            break;
+
+        case TAG_Int:
+            written = NBT_Write_Int(nbt, (int *)value);
+
+            break;
+
+        case TAG_Long:
+            written = NBT_Write_Long(nbt, (long *)value);
+
+            break;
+
+        case TAG_Float:
+            written = NBT_Write_Float(nbt, (float *)value);
+
+            break;
+
+        case TAG_Double:
+            written = NBT_Write_Double(nbt, (double *)value);
+
+            break;
+
+        case TAG_String:
+            written = NBT_Write_String(nbt, (char *)value);
+
+            break;
+
+        case TAG_Byte_Array:
+            written = NBT_Write_Byte_Array(nbt, (NBT_Byte_Array *)value);
+
+            break;
+
+        case TAG_List:
+            written = NBT_Write_List(nbt, (NBT_List *)value);
+
+            break;
+
+        case TAG_Compound:
+            written = NBT_Write_Compound(nbt, (NBT_Compound *)value);
+
+            break;
+
+        default:
+            /* Maybe moan about a very unknown tag? Not yet... */
+            break;
+
+    }
+
+    return written;
+}
+
+int NBT_Write_Byte(NBT_File *nbt, char *val)
+{
+    /* Bytes, simple enough */
+    return gzwrite(nbt->fp, val, sizeof(char));
+}
+
+int NBT_Write_Short(NBT_File *nbt, short *val)
+{
+    short temp = *val;
+
+    /* Needs swapping first? */
+    if (get_endianness() == L_ENDIAN)
+        swaps((unsigned short *)&temp);
+
+    return gzwrite(nbt->fp, &temp, sizeof(short));
+}
+
+int NBT_Write_Int(NBT_File *nbt, int *val)
+{
+    int temp = *val;
+
+    if (get_endianness() == L_ENDIAN)
+        swapi((unsigned int *)&temp);
+
+    return gzwrite(nbt->fp, &temp, sizeof(int));
+}
+
+int NBT_Write_Long(NBT_File *nbt, long *val)
+{
+    long temp = *val;
+
+    if (get_endianness() == L_ENDIAN)
+        swapl((unsigned long *)&temp);
+
+    return gzwrite(nbt->fp, &temp, sizeof(long));
+}
+
+int NBT_Write_Float(NBT_File *nbt, float *val)
+{
+    float temp = *val;
+
+    if (get_endianness() == L_ENDIAN)
+        temp = swapf(temp);
+
+    return gzwrite(nbt->fp, &temp, sizeof(float));
+}
+
+int NBT_Write_Double(NBT_File *nbt, double *val)
+{
+    double temp = *val;
+
+    if (get_endianness() == L_ENDIAN)
+        temp = swapd(temp);
+
+    return gzwrite(nbt->fp, &temp, sizeof(double));
+}
+
+int NBT_Write_String(NBT_File *nbt, char *val)
+{
+    int size = 0;
+    short len = strlen(val);
+
+    /* Write length first */
+    size += NBT_Write_Short(nbt, &len);
+
+    /* Write content */
+    size += gzwrite(nbt->fp, val, len);
+
+    return size;
+}
+
+int NBT_Write_Byte_Array(NBT_File *nbt, NBT_Byte_Array *val)
+{
+    int size = 0;
+    
+    /* Length first again, then content */
+    size += NBT_Write_Int(nbt, &(val->length));
+    size += gzwrite(nbt->fp, val->content, val->length);
+
+    return size;
+}
+
+int NBT_Write_List(NBT_File *nbt, NBT_List *val)
+{
+    int i;
+    int size = 0;
+
+    /* Write type id first */
+    size += NBT_Write_Byte(nbt, (char *)&(val->type));
+    size += NBT_Write_Int(nbt, &(val->length));
+
+    printf("Writing %d entries\n", val->length);
+    for (i = 0; i < val->length; ++i)
+        size += NBT_Write_Value(nbt, val->type, val->content[i]);
+
+    return size;    
+}
+
+int NBT_Write_Compound(NBT_File *nbt, NBT_Compound *val)
+{
+    int endtag = 0;
+    int i;
+    int size = 0;
+
+    for (i = 0; i < val->length; ++i)
+        size += NBT_Write_Tag(nbt, val->tags[i]);
+
+    size += gzwrite(nbt->fp, &endtag, sizeof(char));
+
+    return size;
 }
