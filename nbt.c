@@ -799,7 +799,6 @@ int nbt_write_tag(nbt_file *nbt, nbt_tag *tag)
 
     if (tag->type != TAG_END)
     {
-        printf("Writing tag: %s\n", tag->name);
         /* Every tag but TAG_END has a name */
         size += nbt_write_string(nbt, tag->name);
         size += nbt_write_value(nbt, tag->type, tag->value);
@@ -811,8 +810,6 @@ int nbt_write_tag(nbt_file *nbt, nbt_tag *tag)
 int nbt_write_value(nbt_file *nbt, nbt_type t, void *value)
 {
     int written = 0;
-
-    printf("Writing type 0x%02X\n", t);
 
     switch (t)
     {
@@ -967,8 +964,8 @@ int nbt_write_list(nbt_file *nbt, nbt_list *val)
 
     /* Write type id first */
     size += nbt_write_byte(nbt, (char *)&(val->type));
+    size += nbt_write_int(nbt, &(val->length));
 
-    printf("Writing %d entries\n", val->length);
     for (i = 0; i < val->length; ++i)
         size += nbt_write_value(nbt, val->type, val->content[i]);
 
