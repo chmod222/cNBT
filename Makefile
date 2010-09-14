@@ -7,13 +7,16 @@
 
 CFLAGS=-g -Wall
 
-all: nbtreader datlevel
+all: nbtreader datlevel blockreplacer
 
 nbtreader: main.o libnbt.a
 	gcc main.o -L. -lnbt -lz -o nbtreader -g
 
 datlevel: datlevel.c libnbt.a
 	gcc datlevel.c -L. -lnbt -lz -lm -o datlevel -g -Wall
+
+blockreplacer: blockreplace.c libnbt.a
+	gcc blockreplace.c -L. -lnbt -lz -o blockreplace -g -Wall
 
 main.o: main.c
 
