@@ -624,7 +624,7 @@ void nbt_change_name(nbt_tag *tag, const char *newname)
     return;
 }
 
-nbt_tag *nbt_add_Tag(const char *name, 
+nbt_tag *nbt_add_tag(const char *name, 
                  nbt_type type,
                  void *val,
                  size_t size,
