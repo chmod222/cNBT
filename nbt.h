@@ -14,6 +14,7 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
 #include <zlib.h>
 
 typedef enum nbt_status
@@ -52,14 +53,14 @@ typedef struct nbt_tag
 
 typedef struct nbt_byte_array
 {
-    int length;
+    int32_t length;
     unsigned char *content;
 
 } nbt_byte_array;
 
 typedef struct nbt_list
 {
-    int length;
+    int32_t length;
     nbt_type type;
 
     void **content;
@@ -67,7 +68,7 @@ typedef struct nbt_list
 
 typedef struct nbt_compound
 {
-    long length;
+    int32_t length;
     nbt_tag **tags;
 
 } nbt_compound;
@@ -94,9 +95,9 @@ int nbt_read_tag(nbt_file *nbt, nbt_tag **parent);
 int nbt_read(nbt_file *nbt, nbt_type type, void **parent);
 
 int nbt_read_byte(nbt_file *nbt, char **out);
-int nbt_read_short(nbt_file *nbt, short **out);
-int nbt_read_int(nbt_file *nbt, int **out);
-int nbt_read_long(nbt_file *nbt, long **out);
+int nbt_read_short(nbt_file *nbt, int16_t **out);
+int nbt_read_int(nbt_file *nbt, int32_t **out);
+int nbt_read_long(nbt_file *nbt, int64_t **out);
 int nbt_read_float(nbt_file *nbt, float **out);
 int nbt_read_double(nbt_file *nbt, double **out);
 int nbt_read_byte_array(nbt_file *nbt, unsigned char **out);
@@ -108,7 +109,7 @@ char *nbt_type_to_string(nbt_type t);
 
 void nbt_print_tag(nbt_tag *t);
 void nbt_print_value(nbt_type t, void *val);
-void nbt_print_byte_array(unsigned char *ba, int len);
+void nbt_print_byte_array(unsigned char *ba, int32_t len);
 
 void nbt_change_value(nbt_tag *tag, void *val, size_t size);
 void nbt_change_name(nbt_tag *tag, const char *newname);
@@ -141,9 +142,9 @@ int nbt_write_tag(nbt_file *nbt, nbt_tag *tag);
 int nbt_write_value(nbt_file *nbt, nbt_type t, void *val);
 
 int nbt_write_byte(nbt_file *nbt, char *val);
-int nbt_write_short(nbt_file *nbt, short *val);
-int nbt_write_int(nbt_file *nbt, int *val);
-int nbt_write_long(nbt_file *nbt, long *val);
+int nbt_write_short(nbt_file *nbt, int16_t *val);
+int nbt_write_int(nbt_file *nbt, int32_t *val);
+int nbt_write_long(nbt_file *nbt, int64_t *val);
 int nbt_write_float(nbt_file *nbt, float *val);
 int nbt_write_double(nbt_file *nbt, double *val);
 int nbt_write_string(nbt_file *nbt, char *val);

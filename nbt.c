@@ -77,17 +77,17 @@ int nbt_read(nbt_file *nbt, nbt_type type, void **parent)
             break;
 
         case TAG_SHORT:
-            nbt_read_short(nbt, (short **)parent);
+            nbt_read_short(nbt, (int16_t **)parent);
 
             break;
 
         case TAG_INT:
-            nbt_read_int(nbt, (int **)parent);
+            nbt_read_int(nbt, (int32_t **)parent);
 
             break;
 
         case TAG_LONG:
-            nbt_read_long(nbt, (long **)parent);
+            nbt_read_long(nbt, (int64_t **)parent);
 
             break;
 
@@ -166,45 +166,45 @@ int nbt_read_byte(nbt_file *nbt, char **out)
     return 0;
 }
 
-int nbt_read_short(nbt_file *nbt, short **out)
+int nbt_read_short(nbt_file *nbt, int16_t **out)
 {
-    short t;
+    int16_t t;
 
     gzread(nbt->fp, &t, sizeof(t));
     if (get_endianness() == L_ENDIAN)
-        swaps((unsigned short *)&t);
+        swaps((uint16_t *)&t);
 
-    *out = malloc(sizeof(short));
-    memcpy(*out, &t, sizeof(short));
+    *out = malloc(sizeof(int16_t));
+    memcpy(*out, &t, sizeof(int16_t));
 
     
     return 0;
 }
 
-int nbt_read_int(nbt_file *nbt, int **out)
+int nbt_read_int(nbt_file *nbt, int32_t **out)
 {
-    int t;
+    int32_t t;
 
     gzread(nbt->fp, &t, sizeof(t));
     if (get_endianness() == L_ENDIAN)
-        swapi((unsigned int *)&t);
+        swapi((uint32_t *)&t);
     
-    *out = malloc(sizeof(int));
-    memcpy(*out, &t, sizeof(int));
+    *out = malloc(sizeof(int32_t));
+    memcpy(*out, &t, sizeof(int32_t));
 
     return 0;
 }
 
-int nbt_read_long(nbt_file *nbt, long **out)
+int nbt_read_long(nbt_file *nbt, int64_t **out)
 {
-    long t;
+    int64_t t;
 
     gzread(nbt->fp, &t, sizeof(t));
     if (get_endianness() == L_ENDIAN)
-        swapl((unsigned long *)&t);
+        swapl((uint64_t *)&t);
 
-    *out = malloc(sizeof(long));
-    memcpy(*out, &t, sizeof(long));
+    *out = malloc(sizeof(int64_t));
+    memcpy(*out, &t, sizeof(int64_t));
 
     return 0;
 }
@@ -239,11 +239,11 @@ int nbt_read_double(nbt_file *nbt, double **out)
 
 int nbt_read_byte_array(nbt_file *nbt, unsigned char **out)
 {
-    int len;
+    int32_t len;
 
     gzread(nbt->fp, &len, sizeof(len));
     if (get_endianness() == L_ENDIAN)
-        swapi((unsigned int *)&len);
+        swapi((uint32_t *)&len);
 
     *out = malloc(len);
     gzread(nbt->fp, *out, len);
@@ -253,11 +253,11 @@ int nbt_read_byte_array(nbt_file *nbt, unsigned char **out)
 
 int nbt_read_string(nbt_file *nbt, char **out)
 {
-    short len;
+    int16_t len;
 
     gzread(nbt->fp, &len, sizeof(len));
     if (get_endianness() == L_ENDIAN)
-        swaps((unsigned short *)&len);
+        swaps((uint16_t *)&len);
 
     *out = malloc(len + 1);
     memset(*out, 0, len + 1);
@@ -269,7 +269,7 @@ int nbt_read_string(nbt_file *nbt, char **out)
 long nbt_read_list(nbt_file *nbt, char *type_out, void ***target)
 {
     char type;
-    int len;
+    int32_t len;
     int i;
 
     gzread(nbt->fp, &type, 1);
@@ -278,7 +278,7 @@ long nbt_read_list(nbt_file *nbt, char *type_out, void ***target)
     gzread(nbt->fp, &len, sizeof(len));
 
     if (get_endianness() == L_ENDIAN)
-        swapi((unsigned int *)&len);
+        swapi((uint32_t *)&len);
 
 
     *target = malloc(len * sizeof(void *));
@@ -291,7 +291,7 @@ long nbt_read_list(nbt_file *nbt, char *type_out, void ***target)
 
 long nbt_read_compound(nbt_file *nbt, nbt_tag ***listptr)
 {
-    long i;
+    int32_t i;
 
     *listptr = malloc(sizeof(nbt_tag *)); 
 
@@ -531,7 +531,7 @@ void nbt_print_value(nbt_type t, void *v)
             ;;
             nbt_compound *c = (nbt_compound *)v;
             
-            printf("(%ld entries) { \n", c->length);
+            printf("(%d entries) { \n", c->length);
             indent++;
 
             for (i = 0; i < c->length; ++i)
@@ -822,17 +822,17 @@ int nbt_write_value(nbt_file *nbt, nbt_type t, void *value)
             break;
 
         case TAG_SHORT:
-            written = nbt_write_short(nbt, (short *)value);
+            written = nbt_write_short(nbt, (int16_t *)value);
 
             break;
 
         case TAG_INT:
-            written = nbt_write_int(nbt, (int *)value);
+            written = nbt_write_int(nbt, (int32_t *)value);
 
             break;
 
         case TAG_LONG:
-            written = nbt_write_long(nbt, (long *)value);
+            written = nbt_write_long(nbt, (int64_t *)value);
 
             break;
 
@@ -881,35 +881,35 @@ int nbt_write_byte(nbt_file *nbt, char *val)
     return gzwrite(nbt->fp, val, sizeof(char));
 }
 
-int nbt_write_short(nbt_file *nbt, short *val)
+int nbt_write_short(nbt_file *nbt, int16_t *val)
 {
-    short temp = *val;
+    int16_t temp = *val;
 
     /* Needs swapping first? */
     if (get_endianness() == L_ENDIAN)
-        swaps((unsigned short *)&temp);
+        swaps((uint16_t *)&temp);
 
-    return gzwrite(nbt->fp, &temp, sizeof(short));
+    return gzwrite(nbt->fp, &temp, sizeof(int16_t));
 }
 
-int nbt_write_int(nbt_file *nbt, int *val)
+int nbt_write_int(nbt_file *nbt, int32_t *val)
 {
-    int temp = *val;
+    int32_t temp = *val;
 
     if (get_endianness() == L_ENDIAN)
-        swapi((unsigned int *)&temp);
+        swapi((uint32_t *)&temp);
 
-    return gzwrite(nbt->fp, &temp, sizeof(int));
+    return gzwrite(nbt->fp, &temp, sizeof(int32_t));
 }
 
-int nbt_write_long(nbt_file *nbt, long *val)
+int nbt_write_long(nbt_file *nbt, int64_t *val)
 {
-    long temp = *val;
+    int64_t temp = *val;
 
     if (get_endianness() == L_ENDIAN)
-        swapl((unsigned long *)&temp);
+        swapl((uint64_t *)&temp);
 
-    return gzwrite(nbt->fp, &temp, sizeof(long));
+    return gzwrite(nbt->fp, &temp, sizeof(int64_t));
 }
 
 int nbt_write_float(nbt_file *nbt, float *val)
@@ -935,7 +935,7 @@ int nbt_write_double(nbt_file *nbt, double *val)
 int nbt_write_string(nbt_file *nbt, char *val)
 {
     int size = 0;
-    short len = strlen(val);
+    int16_t len = strlen(val);
 
     /* Write length first */
     size += nbt_write_short(nbt, &len);

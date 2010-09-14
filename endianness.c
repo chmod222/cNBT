@@ -13,11 +13,11 @@ int get_endianness()
     return t.c[0] == 1;
 }
 
-unsigned long long swpd(double d)
+uint64_t swpd(double d)
 {
     int i;
 
-    unsigned long long res;
+    uint64_t res;
     unsigned char *dest = (unsigned char *)&res;
     unsigned char *src  = (unsigned char *)&d;
 
@@ -27,7 +27,7 @@ unsigned long long swpd(double d)
     return res;
 }
 
-double uswpd(unsigned long long d)
+double uswpd(uint64_t d)
 {
     int i;
 
@@ -75,12 +75,12 @@ double swapd(double dx)
     return rv;
 }
 
-void swaps(unsigned short *x)
+void swaps(uint16_t *x)
 {
     *x = (*x >> 8) | (*x << 8);
 }
 
-void swapi(unsigned int *x)
+void swapi(uint32_t *x)
 {
     *x = (*x >> 24) |
          ((*x<<8) & 0x00FF0000) |
@@ -88,7 +88,7 @@ void swapi(unsigned int *x)
          (*x << 24);
 }
 
-void swapl(unsigned long *x)
+void swapl(uint64_t *x)
 {
     *x = (*x>>56) | 
          ((*x<<40) & 0x00FF000000000000) |
