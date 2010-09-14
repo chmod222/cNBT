@@ -87,7 +87,13 @@ void dump_nbt(char *filename)
     }
 
     /* Try parsing */
-    nbt_parse(nbt, filename);
+    if (nbt_parse(nbt, filename) != NBT_OK)
+    {
+        fprintf(stderr, "NBT_Parse(): Error\n");
+
+        return;
+    }
+
     nbt_print_tag(nbt->root);
 
     if (opt_dupe)

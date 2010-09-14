@@ -42,6 +42,9 @@ int nbt_parse(nbt_file *nbt, const char *filename)
 
     gzclose(nbt->fp);
 
+    if (nbt->root == NULL)
+        return NBT_ERR;
+
     return NBT_OK;
 }
 
@@ -113,7 +116,7 @@ int nbt_read(nbt_file *nbt, nbt_type type, void **parent)
         case TAG_BYTE_ARRAY:
             ;; /* ... */
             unsigned char *bytestring;
-            int len = nbt_read_byte_array(nbt, &bytestring);
+            int32_t len = nbt_read_byte_array(nbt, &bytestring);
             
             nbt_byte_array *t = malloc(sizeof(nbt_byte_array));
             t->length = len;
@@ -127,7 +130,7 @@ int nbt_read(nbt_file *nbt, nbt_type type, void **parent)
             ;; 
             char type;
             void **target;
-            long length = nbt_read_list(nbt, &type, &target);
+            int32_t length = nbt_read_list(nbt, &type, &target);
 
             nbt_list *l = malloc(sizeof(nbt_list));
             l->length = length;
@@ -143,7 +146,7 @@ int nbt_read(nbt_file *nbt, nbt_type type, void **parent)
             nbt_compound *c = malloc(sizeof(nbt_compound));
             nbt_tag **tags = NULL;
 
-            long lc = nbt_read_compound(nbt, &tags);
+            int32_t lc = nbt_read_compound(nbt, &tags);
 
             c->tags = tags;
             c->length = lc;
@@ -266,7 +269,7 @@ int nbt_read_string(nbt_file *nbt, char **out)
     return len;
 }
 
-long nbt_read_list(nbt_file *nbt, char *type_out, void ***target)
+int32_t nbt_read_list(nbt_file *nbt, char *type_out, void ***target)
 {
     char type;
     int32_t len;
@@ -289,7 +292,7 @@ long nbt_read_list(nbt_file *nbt, char *type_out, void ***target)
     return len;
 }
 
-long nbt_read_compound(nbt_file *nbt, nbt_tag ***listptr)
+int32_t nbt_read_compound(nbt_file *nbt, nbt_tag ***listptr)
 {
     int32_t i;
 
@@ -497,15 +500,17 @@ void nbt_print_value(nbt_type t, void *v)
             break;
 
         case TAG_SHORT:
-            printf("%d", *((short *)v));
+            printf("%d", *((int16_t *)v));
             break;
 
         case TAG_INT:
-            printf("%d", *((int *)v));
+            ;; long t = *((int32_t *)v);
+            printf("%ld", t);
             break;
 
         case TAG_LONG:
-            printf("%ld", *((long *)v));
+            ;; long long tl = *((int64_t *)v);
+            printf("%lld", tl);
             break;
 
         case TAG_FLOAT:
@@ -565,7 +570,7 @@ void nbt_print_value(nbt_type t, void *v)
             break;
 
         default:
-            printf("<not implemented: 0x%02X>", t);
+            printf("<not implemented: 0x%02X>", (char)t);
     }
 
     printf("\n");

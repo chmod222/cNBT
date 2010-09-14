@@ -7,8 +7,13 @@
 
 CFLAGS=-g -Wall
 
+all: nbtreader datlevel
+
 nbtreader: main.o libnbt.a
 	gcc main.o -L. -lnbt -lz -o nbtreader -g
+
+datlevel: datlevel.c libnbt.a
+	gcc datlevel.c -L. -lnbt -lz -lm -o datlevel -g -Wall
 
 main.o: main.c
 

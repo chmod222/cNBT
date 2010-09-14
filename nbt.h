@@ -102,8 +102,8 @@ int nbt_read_float(nbt_file *nbt, float **out);
 int nbt_read_double(nbt_file *nbt, double **out);
 int nbt_read_byte_array(nbt_file *nbt, unsigned char **out);
 int nbt_read_string(nbt_file *nbt, char **out);
-long nbt_read_list(nbt_file *nbt, char *type_out, void ***target);
-long nbt_read_compound(nbt_file *nbt, nbt_tag ***tagslist); /* Pointer an arr */
+int32_t nbt_read_list(nbt_file *nbt, char *type_out, void ***target);
+int32_t nbt_read_compound(nbt_file *nbt, nbt_tag ***tagslist); /* Pointer an arr */
 
 char *nbt_type_to_string(nbt_type t);
 
