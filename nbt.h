@@ -116,23 +116,7 @@ int nbt_change_name(nbt_tag *tag, const char *newname);
 
 void nbt_print_indent(int lv);
 
-nbt_tag *nbt_add_tag(
-        const char *name,
-        nbt_type type,
-        void *val,
-        size_t size,
-        nbt_tag *parent);
-
-nbt_tag *nbt_add_tag_to_compound(
-        const char *name,
-        nbt_type type,
-        void *val,
-        size_t size,
-        nbt_compound *parent);
-
-void nbt_add_item_to_list(void *val, size_t size, nbt_list *parent);
-void nbt_add_byte_to_array(char *val, nbt_byte_array *ba);
-
+nbt_tag *nbt_add_tag(nbt_tag *child, nbt_tag *parent);
 void nbt_remove_tag(nbt_tag *target, nbt_tag *parent);
 
 nbt_tag *nbt_find_tag_by_name(const char *needle, nbt_tag *haystack);
@@ -170,9 +154,24 @@ int nbt_set_long(nbt_tag *t, int64_t v);
 int nbt_set_float(nbt_tag *t, float v);
 int nbt_set_double(nbt_tag *t, double v);
 int nbt_set_string(nbt_tag *t, char *v);
-int nbt_set_list(nbt_tag *t, nbt_list *v);
-int nbt_set_byte_array(nbt_tag *t, nbt_byte_array *v);
-int nbt_set_compound(nbt_tag *t, nbt_compound *v);
+int nbt_set_list(nbt_tag *t, void *v, int len, nbt_type type);
+int nbt_set_byte_array(nbt_tag *t, unsigned char *v, int len);
+int nbt_set_compound(nbt_tag *t, nbt_tag *tags, int len);
+
+int nbt_get_length(nbt_tag *t);
+int nbt_get_list_type(nbt_tag *t);
+
+int nbt_new_tag(nbt_tag **d, nbt_type t, const char *name);
+int nbt_new_byte(nbt_tag **d, const char *name);
+int nbt_new_short(nbt_tag **d, const char *name);
+int nbt_new_int(nbt_tag **d, const char *name);
+int nbt_new_long(nbt_tag **d, const char *name);
+int nbt_new_float(nbt_tag **d, const char *name);
+int nbt_new_double(nbt_tag **d, const char *name);
+int nbt_new_string(nbt_tag **d, const char *name);
+int nbt_new_byte_array(nbt_tag **d, const char *name);
+int nbt_new_list(nbt_tag **d, const char *name, nbt_type type);
+int nbt_new_compound(nbt_tag **d, const char *name);
 
 
 #define DEBUG 1

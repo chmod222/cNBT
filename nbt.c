@@ -341,6 +341,9 @@ int nbt_free_tag(nbt_tag *t)
 
 int nbt_free_type(nbt_type type, void *payload)
 {
+    if (payload == NULL)
+        return 0;
+
     switch (type)
     {
         case TAG_BYTE:
@@ -631,110 +634,30 @@ int nbt_change_name(nbt_tag *tag, const char *newname)
     return 1;
 }
 
-nbt_tag *nbt_add_tag(const char *name, 
-                     nbt_type type,
-                     void *val,
-                     size_t size,
-                     nbt_tag *parent)
+
+nbt_tag *nbt_add_tag(nbt_tag *child, nbt_tag *parent)
 {
-    nbt_tag *res;
+    nbt_compound *c = NULL;
 
-    if (parent->type == TAG_COMPOUND)
-    {
-        nbt_compound *c = (nbt_compound *)parent->value;
-
-        res = nbt_add_tag_to_compound(name, type, val, size, c);
-    }
-    else if (parent->type == TAG_LIST)
-    {
-        nbt_list *l = (nbt_list *)parent->value;
-
-        if (l->type == type)
-            nbt_add_item_to_list(val, size, l);
-
-        res = NULL;
-    }
-    else if ((parent->type == TAG_BYTE_ARRAY) && (type == TAG_BYTE))
-    {
-        nbt_byte_array *ba = (nbt_byte_array *)parent->value;
-
-        nbt_add_byte_to_array(val, ba);
-
-        res = NULL;
-    }
-    else
+    if (parent->type != TAG_COMPOUND)
         return NULL;
 
-    return res;
-}
+    c = nbt_cast_compound(parent);
 
-nbt_tag *nbt_add_tag_to_compound(const char *name,
-                            nbt_type type,
-                            void *val,
-                            size_t size,
-                            nbt_compound *parent)
-{
     nbt_tag **tags_temp = NULL;
-    tags_temp = realloc(parent->tags, 
-                        sizeof(nbt_tag *) * (parent->length + 1));
+    tags_temp = realloc(c->tags, sizeof(nbt_tag *) * (c->length + 1));
 
     if (tags_temp != NULL)
     {
-        nbt_tag *temp = malloc(sizeof(nbt_tag));
-        if (temp != NULL)
-        {
-            parent->tags = tags_temp;
-            parent->length++;
+        c->tags = tags_temp;
+        c->length++;
 
-            temp->name = malloc(strlen(name) + 1);
-            strcpy(temp->name, name);
+        c->tags[c->length - 1] = child;
 
-            temp->type = type;
-
-            temp->value = malloc(size);
-            memcpy(temp->value, val, size);
-
-            parent->tags[parent->length - 1] = temp;
-
-            return temp;
-        }
+        return child;
     }
 
     return NULL;
-}
-
-void nbt_add_item_to_list(void *val, size_t size, nbt_list *parent)
-{
-    void **temp = realloc(parent->content, sizeof(void *) * (parent->length + 1));
-    if (temp != NULL)
-    {
-        void *new = malloc(size);
-        if (new != NULL)
-        {
-            parent->content = temp;
-            parent->length++;
-
-            memcpy(new, val, size);
-            parent->content[parent->length - 1] = new;
-        }
-        else
-            free(temp);
-    }
-
-    return;
-}
-
-void nbt_add_byte_to_array(char *val, nbt_byte_array *parent)
-{
-    unsigned char *temp = realloc(parent->content, (parent->length + 1));
-    if (temp != NULL)
-    {
-        parent->content = temp;
-        parent->length++;
-        parent->content[parent->length - 1] = *val;
-    }
-
-    return;
 }
 
 void nbt_remove_tag(nbt_tag *target, nbt_tag *parent)
@@ -1117,23 +1040,186 @@ int nbt_set_string(nbt_tag *t, char *v)
     return nbt_change_value(t, v, strlen(v) + 1);
 }
 
-int nbt_set_list(nbt_tag *t, nbt_list *v)
+int nbt_set_list(nbt_tag *t, void *v, int len, nbt_type type)
 {
+    nbt_list temp;
+
     if (t->type != TAG_LIST) return 1;
 
-    return nbt_change_value(t, v, sizeof(*v));
+    temp.type = type;
+    temp.length = len;
+
+    temp.content = malloc(sizeof(void *) * len);
+    if (temp.content == NULL)
+        return 1;
+
+    memcpy(temp.content, v, len);
+
+    return nbt_change_value(t, &temp, sizeof(temp));
 }
 
-int nbt_set_byte_array(nbt_tag *t, nbt_byte_array *v)
+int nbt_set_byte_array(nbt_tag *t, unsigned char *v, int len)
 {
+    nbt_byte_array temp;
+
     if (t->type != TAG_BYTE_ARRAY) return 1;
 
-    return nbt_change_value(t, v, sizeof(*v));
+    temp.length = len;
+
+    temp.content = malloc(sizeof(unsigned char) * len);
+    if (temp.content == NULL)
+        return 1;
+
+    memcpy(temp.content, v, len);
+
+    return nbt_change_value(t, &temp, sizeof(temp));
 }
 
-int nbt_set_compound(nbt_tag *t, nbt_compound *v)
+int nbt_set_compound(nbt_tag *t, nbt_tag *tags, int len)
 {
+    nbt_compound temp;
+
     if (t->type != TAG_COMPOUND) return 1;
 
-    return nbt_change_value(t, v, sizeof(*v));
+    temp.length = len;
+
+    temp.tags = malloc(sizeof(nbt_tag *) * len);
+    if (temp.tags == NULL)
+        return 1;
+
+    memcpy(temp.tags, tags, len);
+
+    return nbt_change_value(t, &temp, sizeof(temp));
+}
+
+int nbt_get_length(nbt_tag *t)
+{
+    if (t->type == TAG_BYTE_ARRAY)
+    {
+        nbt_byte_array *ba = nbt_cast_byte_array(t);
+        if (ba != NULL)
+            return ba->length;
+    }
+    else if (t->type == TAG_LIST)
+    {
+        nbt_list *l = nbt_cast_list(t);
+        if (l != NULL)
+            return l->length;
+    }
+    else if (t->type == TAG_COMPOUND)
+    {
+        nbt_compound *c = nbt_cast_compound(t);
+        if (c != NULL)
+            return c->length;
+    }
+
+    return -1;
+}
+
+int nbt_get_list_type(nbt_tag *t)
+{
+    nbt_list *l = NULL;
+
+    if (t->type != TAG_LIST)
+        return NBT_ERR;
+
+    l = nbt_cast_list(t);
+
+    return l->type;
+}
+
+int nbt_new_tag(nbt_tag **d, nbt_type t, const char *name)
+{
+    *d = malloc(sizeof(nbt_tag));
+    if (*d == NULL)
+        return -1;
+
+    (*d)->type  = t;
+    (*d)->value = NULL;
+    (*d)->name  = NULL;
+
+    if (nbt_change_name(*d, name) != 0)
+        return -1;
+
+    return 0;
+}
+
+int nbt_new_byte(nbt_tag **d, const char *name)
+{
+    if (nbt_new_tag(d, TAG_BYTE, name) != 0)
+        return -1;
+
+    return nbt_set_byte(*d, 0);
+}
+
+int nbt_new_short(nbt_tag **d, const char *name)
+{
+    if (nbt_new_tag(d, TAG_SHORT, name) != 0)
+        return -1;
+
+    return nbt_set_short(*d, 0);
+}
+
+int nbt_new_int(nbt_tag **d, const char *name)
+{
+    if (nbt_new_tag(d, TAG_INT, name) != 0)
+        return -1;
+
+    return nbt_set_int(*d, 0);
+}
+
+int nbt_new_long(nbt_tag **d, const char *name)
+{
+    if (nbt_new_tag(d, TAG_LONG, name) != 0)
+        return -1;
+
+    return nbt_set_long(*d, 0);
+}
+
+int nbt_new_float(nbt_tag **d, const char *name)
+{
+    if (nbt_new_tag(d, TAG_FLOAT, name) != 0)
+        return -1;
+
+    return nbt_set_float(*d, 0.0);
+}
+
+int nbt_new_double(nbt_tag **d, const char *name)
+{
+    if (nbt_new_tag(d, TAG_DOUBLE, name) != 0)
+        return -1;
+
+    return nbt_set_double(*d, 0.0);
+}
+
+int nbt_new_string(nbt_tag **d, const char *name)
+{
+    if (nbt_new_tag(d, TAG_STRING, name) != 0)
+        return -1;
+
+    return nbt_set_string(*d, "");
+}
+
+int nbt_new_byte_array(nbt_tag **d, const char *name)
+{
+    if (nbt_new_tag(d, TAG_BYTE_ARRAY, name) != 0)
+        return -1;
+
+    return nbt_set_byte_array(*d, NULL, 0);
+}
+
+int nbt_new_list(nbt_tag **d, const char *name, nbt_type type)
+{
+    if (nbt_new_tag(d, TAG_LIST, name) != 0)
+        return -1;
+
+    return nbt_set_list(*d, NULL, 0, type);
+}
+
+int nbt_new_compound(nbt_tag **d, const char *name)
+{
+    if (nbt_new_tag(d, TAG_COMPOUND, name) != 0)
+        return -1;
+
+    return nbt_set_compound(*d, NULL, 0);
 }

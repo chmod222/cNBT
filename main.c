@@ -77,6 +77,8 @@ int main(int argc, char **argv)
 void dump_nbt(char *filename)
 {
     nbt_file *nbt = NULL;
+    nbt_tag *ba;
+    nbt_tag *p;
 
     /* Enough parameters given? */
     if (nbt_init(&nbt) != NBT_OK)
@@ -95,6 +97,19 @@ void dump_nbt(char *filename)
     }
 
     nbt_print_tag(nbt->root);
+
+
+    nbt_change_name(nbt->root, "GRIEF'D");
+    nbt_new_compound(&p, "SomeTest");
+
+    nbt_new_string(&ba, "Test, suckers!");
+    nbt_set_string(ba, "FFFFFFFFUUUUU");
+    nbt_add_tag(p, nbt->root);
+    nbt_add_tag(ba, p);
+    nbt_remove_tag(ba, p);
+    nbt_print_tag(nbt->root);
+
+    //nbt_free_tag(ba);
 
     if (opt_dupe)
         nbt_write(nbt, "out.nbt");
