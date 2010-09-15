@@ -111,8 +111,8 @@ void nbt_print_tag(nbt_tag *t);
 void nbt_print_value(nbt_type t, void *val);
 void nbt_print_byte_array(unsigned char *ba, int32_t len);
 
-void nbt_change_value(nbt_tag *tag, void *val, size_t size);
-void nbt_change_name(nbt_tag *tag, const char *newname);
+int nbt_change_value(nbt_tag *tag, void *val, size_t size);
+int nbt_change_name(nbt_tag *tag, const char *newname);
 
 void nbt_print_indent(int lv);
 
@@ -158,9 +158,22 @@ int32_t *nbt_cast_int(nbt_tag *t);
 int64_t *nbt_cast_long(nbt_tag *t);
 float *nbt_cast_float(nbt_tag *t);
 double *nbt_cast_double(nbt_tag *t);
+char *nbt_cast_string(nbt_tag *t);
 nbt_list *nbt_cast_list(nbt_tag *t);
 nbt_byte_array *nbt_cast_byte_array(nbt_tag *t);
 nbt_compound *nbt_cast_compound(nbt_tag *t);
+
+int nbt_set_byte(nbt_tag *t, char v);
+int nbt_set_short(nbt_tag *t, int16_t v);
+int nbt_set_int(nbt_tag *t, int32_t v);
+int nbt_set_long(nbt_tag *t, int64_t v);
+int nbt_set_float(nbt_tag *t, float v);
+int nbt_set_double(nbt_tag *t, double v);
+int nbt_set_string(nbt_tag *t, char *v);
+int nbt_set_list(nbt_tag *t, nbt_list *v);
+int nbt_set_byte_array(nbt_tag *t, nbt_byte_array *v);
+int nbt_set_compound(nbt_tag *t, nbt_compound *v);
+
 
 #define DEBUG 1
 

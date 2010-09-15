@@ -599,19 +599,23 @@ void nbt_print_byte_array(unsigned char *ba, int len)
     return;
 }
 
-void nbt_change_value(nbt_tag *tag, void *val, size_t size)
+int nbt_change_value(nbt_tag *tag, void *val, size_t size)
 {
-    nbt_free_type(tag->type, tag->value);
-
     void *t = malloc(size);
-    memcpy(t, val, size);
+    if (t != NULL)
+    {
+        nbt_free_type(tag->type, tag->value);
+ 
+        memcpy(t, val, size);
+        tag->value = t;
 
-    tag->value = t;
+        return 0;
+    }
 
-    return;
+    return 1;
 }
 
-void nbt_change_name(nbt_tag *tag, const char *newname)
+int nbt_change_name(nbt_tag *tag, const char *newname)
 {
     char *tmp = malloc(strlen(newname) + 1);
     if (tmp != NULL)
@@ -620,16 +624,18 @@ void nbt_change_name(nbt_tag *tag, const char *newname)
 
         free(tag->name);
         tag->name = tmp;
+
+        return 0;
     }
 
-    return;
+    return 1;
 }
 
 nbt_tag *nbt_add_tag(const char *name, 
-                 nbt_type type,
-                 void *val,
-                 size_t size,
-                 nbt_tag *parent)
+                     nbt_type type,
+                     void *val,
+                     size_t size,
+                     nbt_tag *parent)
 {
     nbt_tag *res;
 
@@ -994,73 +1000,140 @@ int nbt_write_compound(nbt_file *nbt, nbt_compound *val)
 
 char *nbt_cast_byte(nbt_tag *t)
 {
-    if (t->type != TAG_BYTE)
-        return NULL;
+    if (t->type != TAG_BYTE) return NULL;
 
     return (char *)t->value;
 }
 
 int16_t *nbt_cast_short(nbt_tag *t)
 {
-    if (t->type != TAG_SHORT)
-        return NULL;
+    if (t->type != TAG_SHORT) return NULL;
 
     return (int16_t *)t->value;
 }
 
 int32_t *nbt_cast_int(nbt_tag *t)
 {
-    if (t->type != TAG_INT)
-        return NULL;
+    if (t->type != TAG_INT) return NULL;
 
     return (int32_t *)t->value;
 }
 
 int64_t *nbt_cast_long(nbt_tag *t)
 {
-    if (t->type != TAG_LONG)
-        return NULL;
+    if (t->type != TAG_LONG) return NULL;
 
     return (int64_t *)t->value;
 }
 
 float *nbt_cast_float(nbt_tag *t)
 {
-    if (t->type != TAG_FLOAT)
-        return NULL;
+    if (t->type != TAG_FLOAT) return NULL;
 
     return (float *)t->value;
 }
 
 double *nbt_cast_double(nbt_tag *t)
 {
-    if (t->type != TAG_DOUBLE)
-        return NULL;
+    if (t->type != TAG_DOUBLE) return NULL;
 
     return (double *)t->value;
 }
 
+char *nbt_cast_string(nbt_tag *t)
+{
+    if (t->type != TAG_STRING) return NULL;
+
+    return (char *)t->value;
+}
+
 nbt_list *nbt_cast_list(nbt_tag *t)
 {
-    if (t->type != TAG_LIST)
-        return NULL;
+    if (t->type != TAG_LIST) return NULL;
 
     return (nbt_list *)t->value;
 }
 
 nbt_byte_array *nbt_cast_byte_array(nbt_tag *t)
 {
-    if (t->type != TAG_BYTE_ARRAY)
-        return NULL;
+    if (t->type != TAG_BYTE_ARRAY) return NULL;
 
     return (nbt_byte_array *)t->value;
 }
 
 nbt_compound *nbt_cast_compound(nbt_tag *t)
 {
-    if (t->type != TAG_COMPOUND)
-        return NULL;
+    if (t->type != TAG_COMPOUND) return NULL;
 
     return (nbt_compound *)t->value;
 }
 
+int nbt_set_byte(nbt_tag *t, char v)
+{
+    if (t->type != TAG_BYTE) return 1;
+
+    return nbt_change_value(t, &v, sizeof(v));
+}
+
+int nbt_set_short(nbt_tag *t, int16_t v)
+{
+    if (t->type != TAG_SHORT) return 1;
+
+    return nbt_change_value(t, &v, sizeof(v));
+}
+
+int nbt_set_int(nbt_tag *t, int32_t v)
+{
+    if (t->type != TAG_INT) return 1;
+
+    return nbt_change_value(t, &v, sizeof(v));
+}
+
+int nbt_set_long(nbt_tag *t, int64_t v)
+{
+    if (t->type != TAG_LONG) return 1;
+
+    return nbt_change_value(t, &v, sizeof(v));
+}
+
+int nbt_set_float(nbt_tag *t, float v)
+{
+    if (t->type != TAG_FLOAT) return 1;
+
+    return nbt_change_value(t, &v, sizeof(v));
+}
+
+int nbt_set_double(nbt_tag *t, double v)
+{
+    if (t->type != TAG_DOUBLE) return 1;
+
+    return nbt_change_value(t, &v, sizeof(v));
+}
+
+int nbt_set_string(nbt_tag *t, char *v)
+{
+    if (t->type != TAG_STRING) return 1;
+
+    return nbt_change_value(t, v, strlen(v) + 1);
+}
+
+int nbt_set_list(nbt_tag *t, nbt_list *v)
+{
+    if (t->type != TAG_LIST) return 1;
+
+    return nbt_change_value(t, v, sizeof(*v));
+}
+
+int nbt_set_byte_array(nbt_tag *t, nbt_byte_array *v)
+{
+    if (t->type != TAG_BYTE_ARRAY) return 1;
+
+    return nbt_change_value(t, v, sizeof(*v));
+}
+
+int nbt_set_compound(nbt_tag *t, nbt_compound *v)
+{
+    if (t->type != TAG_COMPOUND) return 1;
+
+    return nbt_change_value(t, v, sizeof(*v));
+}

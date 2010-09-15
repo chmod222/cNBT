@@ -252,7 +252,7 @@ int main(int argc, char **argv)
                                                             : "disabled");
                 else
                 {
-                    nbt_change_value(snow, &opt_snow, sizeof(char));
+                    nbt_set_byte(snow, opt_snow);
 
                     printf("%s\n", opt_snow ? "enabled"
                                             : "disabled");
@@ -271,7 +271,7 @@ int main(int argc, char **argv)
                 else
                 {
                     /* Change */
-                    nbt_change_value(time, &opt_time, sizeof(opt_time));
+                    nbt_set_long(time, opt_time);
 
                     printf("%s\n", time_to_string(opt_time));
                 }
