@@ -152,6 +152,16 @@ int nbt_write_byte_array(nbt_file *nbt, nbt_byte_array *val);
 int nbt_write_list(nbt_file *nbt, nbt_list *val);
 int nbt_write_compound(nbt_file *nbt, nbt_compound *val);
 
+char *nbt_cast_byte(nbt_tag *t);
+int16_t *nbt_cast_short(nbt_tag *t);
+int32_t *nbt_cast_int(nbt_tag *t);
+int64_t *nbt_cast_long(nbt_tag *t);
+float *nbt_cast_float(nbt_tag *t);
+double *nbt_cast_double(nbt_tag *t);
+nbt_list *nbt_cast_list(nbt_tag *t);
+nbt_byte_array *nbt_cast_byte_array(nbt_tag *t);
+nbt_compound *nbt_cast_compound(nbt_tag *t);
+
 #define DEBUG 1
 
 int indent;

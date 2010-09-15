@@ -147,7 +147,7 @@ int main(int argc, char **argv)
             assert(blocks != NULL);
             /* Now that we have this out of our way, let's get to it */
 
-            arr = (nbt_byte_array *)blocks->value;
+            arr = nbt_cast_byte_array(blocks);
 
             printf("DEBUG: Replacing %d with %d\n", old_id, new_id);
 

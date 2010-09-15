@@ -490,10 +490,11 @@ void nbt_print_indent(int lv)
 void nbt_print_value(nbt_type t, void *v)
 {
     int i;
+    char type = (char)t;
 
     //printf("%s", indentation);
 
-    switch (t)
+    switch (type)
     {
         case TAG_BYTE:
             printf("0x%02X (%d)", *((char *)v), *((char *)v));
@@ -570,7 +571,7 @@ void nbt_print_value(nbt_type t, void *v)
             break;
 
         default:
-            printf("<not implemented: 0x%02X>", (char)t);
+            printf("<not implemented: 0x%02X>", type);
     }
 
     printf("\n");
@@ -990,3 +991,76 @@ int nbt_write_compound(nbt_file *nbt, nbt_compound *val)
 
     return size;
 }
+
+char *nbt_cast_byte(nbt_tag *t)
+{
+    if (t->type != TAG_BYTE)
+        return NULL;
+
+    return (char *)t->value;
+}
+
+int16_t *nbt_cast_short(nbt_tag *t)
+{
+    if (t->type != TAG_SHORT)
+        return NULL;
+
+    return (int16_t *)t->value;
+}
+
+int32_t *nbt_cast_int(nbt_tag *t)
+{
+    if (t->type != TAG_INT)
+        return NULL;
+
+    return (int32_t *)t->value;
+}
+
+int64_t *nbt_cast_long(nbt_tag *t)
+{
+    if (t->type != TAG_LONG)
+        return NULL;
+
+    return (int64_t *)t->value;
+}
+
+float *nbt_cast_float(nbt_tag *t)
+{
+    if (t->type != TAG_FLOAT)
+        return NULL;
+
+    return (float *)t->value;
+}
+
+double *nbt_cast_double(nbt_tag *t)
+{
+    if (t->type != TAG_DOUBLE)
+        return NULL;
+
+    return (double *)t->value;
+}
+
+nbt_list *nbt_cast_list(nbt_tag *t)
+{
+    if (t->type != TAG_LIST)
+        return NULL;
+
+    return (nbt_list *)t->value;
+}
+
+nbt_byte_array *nbt_cast_byte_array(nbt_tag *t)
+{
+    if (t->type != TAG_BYTE_ARRAY)
+        return NULL;
+
+    return (nbt_byte_array *)t->value;
+}
+
+nbt_compound *nbt_cast_compound(nbt_tag *t)
+{
+    if (t->type != TAG_COMPOUND)
+        return NULL;
+
+    return (nbt_compound *)t->value;
+}
+
