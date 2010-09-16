@@ -5,11 +5,7 @@ Currently implemented features:
 
  * Complete parsing of NBT files
  * Basic modifications (Add a tag to a compound, values to a list or byte array)
- * Pretty printing
- * Writing (possibly modified) NBT structures back to a file
+ * Pretty printing with indentation
+ * Writing (possibly modified) NBT structures back to a compressed file
 
-TODO:
-
- * More dynamic tree manipulation, easier tag creation
-
-It depends on libz for gzip decompressing (and compressing later).
+It depends on libz for gzip decompressing and compressing.
