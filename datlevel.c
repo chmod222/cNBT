@@ -50,17 +50,17 @@ int main(int argc, char **argv)
     for (;;)
     {
         static struct option long_options[] =
-            {
-                { "spawn",     optional_argument, NULL, 's' },
-                { "version",   no_argument,       NULL, 'v' },
-                { "help",      no_argument,       NULL, 'h' },
-                { "verbose",   no_argument,       &opt_verbose, 1 },
-                { "short",     no_argument,       &opt_short, 1 },
-                { "snow",      optional_argument, NULL, 'S' },
-                { "time",      optional_argument, NULL, 't' },
-                { "last-played", no_argument,     NULL, 'l' },
-                { NULL,        no_argument,       NULL, 0 }
-            };
+        {
+            { "spawn",     optional_argument, NULL, 's' },
+            { "version",   no_argument,       NULL, 'v' },
+            { "help",      no_argument,       NULL, 'h' },
+            { "verbose",   no_argument,       &opt_verbose, 1 },
+            { "short",     no_argument,       &opt_short, 1 },
+            { "snow",      optional_argument, NULL, 'S' },
+            { "time",      optional_argument, NULL, 't' },
+            { "last-played", no_argument,     NULL, 'l' },
+            { NULL,        no_argument,       NULL, 0 }
+        };
 
         int option_index = 0;
         int opt;
@@ -102,11 +102,11 @@ int main(int argc, char **argv)
 
                     /* Try parsing the string */
                     if (sscanf(optarg, "%d,%d,%d", &spawn_coords.x, 
-                                                   &spawn_coords.y, 
-                                                   &spawn_coords.z) < 3)
+                                &spawn_coords.y, 
+                                &spawn_coords.z) < 3)
                     {
                         fprintf(stderr, "Could not parse string \"%s\"\n", 
-                                        optarg);
+                                optarg);
 
                         opt_spawn = -1;
 
@@ -121,8 +121,8 @@ int main(int argc, char **argv)
                 if (optarg != NULL)
                 {
                     if   ((strcmp(optarg, "1") == 0)
-                       || (strcmp(optarg, "true") == 0)
-                       || (strcmp(optarg, "yes") == 0))
+                            || (strcmp(optarg, "true") == 0)
+                            || (strcmp(optarg, "yes") == 0))
                         opt_snow = 1;
                     else
                         opt_snow = 0;
@@ -142,7 +142,7 @@ int main(int argc, char **argv)
                 {
                     /* We want to change the time */
                     int h, m, s;
-                    
+
                     if (sscanf(optarg, "%02d:%02d:%02d", &h, &m, &s) < 3)
                     {
                         fprintf(stderr, "Could not parse string \"%s\"\n",
@@ -179,22 +179,22 @@ int main(int argc, char **argv)
     {
         printf("Settings...\n");
         printf(" ~> Changing spawn:\t%s\n", 
-               opt_spawn < 0 ? "Unchanged"
-                             : (opt_spawn ? "View"
-                                          : "Manual"));
+                opt_spawn < 0 ? "Unchanged"
+                : (opt_spawn ? "View"
+                    : "Manual"));
 
         printf(" ~> Snow:\t\t%s\n",
-               opt_snow < 0 ? "Unchanged"
-                            : (opt_snow ? "On"
-                                        : "Off"));
+                opt_snow < 0 ? "Unchanged"
+                : (opt_snow ? "On"
+                    : "Off"));
 
         printf(" ~> Set time:\t\t%s\n",
                 opt_time >= 0 ? time_to_string(opt_time)
-                              : "Unchanged");
+                : "Unchanged");
 
         printf("\n");
     }
-    
+
     /* Make sure we still have some arguments (at least one) left */
     if (optind < argc)
     {
@@ -239,7 +239,7 @@ int main(int argc, char **argv)
         {
             /* data will not be NULL, no check needed */
             nbt_tag *data = nbt_find_tag_by_name("Data", nbt->root);
-            
+
             if (opt_verbose) printf("success!\n\n");
 
             if (opt_snow != OFF)
@@ -251,13 +251,13 @@ int main(int argc, char **argv)
 
                 if (opt_snow == SHOW)
                     printf("%s\n", *(char *)snow->value == 1 ? "enabled"
-                                                            : "disabled");
+                            : "disabled");
                 else
                 {
                     nbt_set_byte(snow, opt_snow);
 
                     printf("%s\n", opt_snow ? "enabled"
-                                            : "disabled");
+                            : "disabled");
                 }
 
             }
@@ -291,40 +291,42 @@ int main(int argc, char **argv)
 
             if (opt_spawn != OFF)
             {
-                if (opt_spawn == SHOW)
-                {
-                    nbt_tag *sx = nbt_find_tag_by_name("SpawnX", data);
-                    nbt_tag *sy = nbt_find_tag_by_name("SpawnY", data);
-                    nbt_tag *sz = nbt_find_tag_by_name("SpawnZ", data);
+                nbt_tag *sx = nbt_find_tag_by_name("SpawnX", data);
+                nbt_tag *sy = nbt_find_tag_by_name("SpawnY", data);
+                nbt_tag *sz = nbt_find_tag_by_name("SpawnZ", data);
 
-                    if ((sz == NULL) || (sy == NULL) || (sx == NULL))
-                        fprintf(stderr, "Couldn't find X, Y or Z tags.\n");
-                    else
-                    {
-                        int32_t *x = nbt_cast_int(sx);
-                        int32_t *y = nbt_cast_int(sy);
-                        int32_t *z = nbt_cast_int(sz);
+                int32_t *x = nbt_cast_int(sx);
+                int32_t *y = nbt_cast_int(sy);
+                int32_t *z = nbt_cast_int(sz);
 
-                        if ((x == NULL) || (y == NULL) || (z == NULL))
-                            fprintf(stderr, "Could't cast X, Y or Z tags\n");
-                        else
-                        {
-                            if (!opt_short)
-                                printf("The spawn is at ");
+                if ((x == NULL) || (y == NULL) || (z == NULL))
+                    fprintf(stderr, "Could't cast X, Y or Z tags\n");
 
-                            printf("X%d, Y%d, Z%d\n", *x, *y, *z);
-                        }
-                    }
-                }
+                if ((sz == NULL) || (sy == NULL) || (sx == NULL))
+                    fprintf(stderr, "Couldn't find X, Y or Z tags.\n");
                 else
                 {
+                    if (opt_spawn != SHOW)
+                    {
+                        nbt_set_int(sx, spawn_coords.x);
+                        nbt_set_int(sy, spawn_coords.y);
+                        nbt_set_int(sz, spawn_coords.z);
+                    }                   
+
+                    x = nbt_cast_int(sx);
+                    y = nbt_cast_int(sy);
+                    z = nbt_cast_int(sz);
+
+                    if (!opt_short)
+                        printf("The spawn is at ");
+
+                    printf("X%d, Y%d, Z%d\n", *x, *y, *z);
                 }
             }
-
-            nbt_write(nbt, file);
-            nbt_free(nbt);
         }
 
+        nbt_write(nbt, file);
+        nbt_free(nbt);
     }
     else
         print_usage(stderr, argv[0]);
@@ -375,8 +377,8 @@ int valid_level(nbt_tag *root)
                 /* ENABLE IF YOU ONLY WANT SINGLEPLAYER MAPS
                  * nbt_tag *player = nbt_find_tag_by_name("Player", data);
 
-                if (player != NULL)*/
-                    return 0;
+                 if (player != NULL)*/
+                return 0;
             }
         }
     }
