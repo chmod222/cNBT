@@ -51,7 +51,7 @@ int main(int argc, char **argv)
     {
         static struct option long_options[] =
             {
-                { "set-spawn", optional_argument, NULL, 's' },
+                { "spawn",     optional_argument, NULL, 's' },
                 { "version",   no_argument,       NULL, 'v' },
                 { "help",      no_argument,       NULL, 'h' },
                 { "verbose",   no_argument,       &opt_verbose, 1 },
@@ -95,7 +95,7 @@ int main(int argc, char **argv)
                 opt_spawn = 0;
 
                 if (optarg == NULL)
-                    opt_spawn = 1;
+                    opt_spawn = SHOW;
                 else
                 {
                     opt_spawn = 0;
@@ -107,6 +107,8 @@ int main(int argc, char **argv)
                     {
                         fprintf(stderr, "Could not parse string \"%s\"\n", 
                                         optarg);
+
+                        opt_spawn = -1;
 
                         break;
                     }
@@ -178,7 +180,7 @@ int main(int argc, char **argv)
         printf("Settings...\n");
         printf(" ~> Changing spawn:\t%s\n", 
                opt_spawn < 0 ? "Unchanged"
-                             : (opt_spawn ? "Current position"
+                             : (opt_spawn ? "View"
                                           : "Manual"));
 
         printf(" ~> Snow:\t\t%s\n",
@@ -287,6 +289,38 @@ int main(int argc, char **argv)
                 printf("%s", ctime(&t));
             }
 
+            if (opt_spawn != OFF)
+            {
+                if (opt_spawn == SHOW)
+                {
+                    nbt_tag *sx = nbt_find_tag_by_name("SpawnX", data);
+                    nbt_tag *sy = nbt_find_tag_by_name("SpawnY", data);
+                    nbt_tag *sz = nbt_find_tag_by_name("SpawnZ", data);
+
+                    if ((sz == NULL) || (sy == NULL) || (sx == NULL))
+                        fprintf(stderr, "Couldn't find X, Y or Z tags.\n");
+                    else
+                    {
+                        int32_t *x = nbt_cast_int(sx);
+                        int32_t *y = nbt_cast_int(sy);
+                        int32_t *z = nbt_cast_int(sz);
+
+                        if ((x == NULL) || (y == NULL) || (z == NULL))
+                            fprintf(stderr, "Could't cast X, Y or Z tags\n");
+                        else
+                        {
+                            if (!opt_short)
+                                printf("The spawn is at ");
+
+                            printf("X%d, Y%d, Z%d\n", *x, *y, *z);
+                        }
+                    }
+                }
+                else
+                {
+                }
+            }
+
             nbt_write(nbt, file);
             nbt_free(nbt);
         }
@@ -310,7 +344,7 @@ void display_help()
     printf("  -h, --help               display this help\n");
     printf("      --verbose            be verbose\n");
     printf("      --short              show less\n");
-    printf("  -s, --set-spawn[=x,y,z]  Set spawn coords\n");
+    printf("  -s, --spawn[=x,y,z]      display or set spawn coords\n");
     printf("  -S, --snow[=1|0]         view or toggle snow\n");
     printf("  -t, --time[=HH:MM:SS]    display or set time\n");
     printf("  -l, --last-played        display date of last playing\n");
