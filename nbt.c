@@ -633,6 +633,23 @@ int nbt_change_name(nbt_tag *tag, const char *newname)
     return 1;
 }
 
+void nbt_add_list_item(void *item, nbt_tag *parent)
+{
+    nbt_list *l = NULL;
+
+    if (parent->type != TAG_LIST)
+        return;
+
+    l = nbt_cast_list(parent);
+    
+    if ((l->content = realloc(l->content, sizeof(void *) * (l->length + 1))) != NULL)
+    {
+        l->content[l->length++] = item;
+    }    
+
+    return;
+}
+    
 
 nbt_tag *nbt_add_tag(nbt_tag *child, nbt_tag *parent)
 {

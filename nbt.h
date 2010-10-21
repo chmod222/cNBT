@@ -116,6 +116,7 @@ int nbt_change_name(nbt_tag *tag, const char *newname);
 
 void nbt_print_indent(int lv);
 
+void nbt_add_list_item(void *item, nbt_tag *parent);
 nbt_tag *nbt_add_tag(nbt_tag *child, nbt_tag *parent);
 void nbt_remove_tag(nbt_tag *target, nbt_tag *parent);
 void nbt_remove_list_item(void *target, nbt_tag *parent);

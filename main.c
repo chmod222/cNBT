@@ -98,7 +98,7 @@ void dump_nbt(char *filename)
         return;
     }
 
-    /*ba = nbt_find_tag_by_name("listTest (long)", nbt->root);
+    ba = nbt_find_tag_by_name("listTest (long)", nbt->root);
 
     if (ba != NULL)
     {
@@ -109,13 +109,18 @@ void dump_nbt(char *filename)
         {
             if (*(c[i]) == 13)
             {
-                nbt_remove_list_item(c[i], ba);
+                int64_t *testval = malloc(sizeof(int64_t));
+                *testval = 50;
+
+
+                //nbt_remove_list_item(c[i], ba);
+                nbt_add_list_item(testval, ba);
                 break;
             }
         }
 
         nbt_print_tag(ba, 0);
-    }*/
+    }
 
     nbt_print_tag(nbt->root, 0);
     nbt_free(nbt);
