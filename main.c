@@ -76,9 +76,11 @@ int main(int argc, char **argv)
 
 void dump_nbt(char *filename)
 {
+    int i;
     nbt_file *nbt = NULL;
     nbt_tag *ba;
     nbt_tag *p;
+    nbt_list *l;
 
     /* Enough parameters given? */
     if (nbt_init(&nbt) != NBT_OK)
@@ -96,24 +98,26 @@ void dump_nbt(char *filename)
         return;
     }
 
-    nbt_print_tag(nbt->root);
+    /*ba = nbt_find_tag_by_name("listTest (long)", nbt->root);
 
+    if (ba != NULL)
+    {
+        l = nbt_cast_list(ba);
+        int64_t **c = (int64_t **)l->content;
 
-    nbt_change_name(nbt->root, "GRIEF'D");
-    nbt_new_compound(&p, "SomeTest");
+        for (i = 0; i < l->length; ++i)
+        {
+            if (*(c[i]) == 13)
+            {
+                nbt_remove_list_item(c[i], ba);
+                break;
+            }
+        }
 
-    nbt_new_string(&ba, "Test, suckers!");
-    nbt_set_string(ba, "FFFFFFFFUUUUU");
-    nbt_add_tag(p, nbt->root);
-    nbt_add_tag(ba, p);
-    nbt_remove_tag(ba, p);
-    nbt_print_tag(nbt->root);
+        nbt_print_tag(ba, 0);
+    }*/
 
-    //nbt_free_tag(ba);
-
-    if (opt_dupe)
-        nbt_write(nbt, "out.nbt");
-
+    nbt_print_tag(nbt->root, 0);
     nbt_free(nbt);
 
     return;

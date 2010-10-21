@@ -21,8 +21,6 @@ int nbt_init(nbt_file **nbt)
     if ((*nbt = malloc(sizeof(nbt_file))) == NULL)
         return NBT_EMEM;
 
-    indent = 0;
-
     (*nbt)->root = NULL;
 
     return NBT_OK;
@@ -467,7 +465,7 @@ char *nbt_type_to_string(nbt_type t)
     return str;
 }
 
-void nbt_print_tag(nbt_tag *t)
+void nbt_print_tag(nbt_tag *t, int indent)
 {
     if (t->type == TAG_END)
         return;
@@ -477,7 +475,7 @@ void nbt_print_tag(nbt_tag *t)
             nbt_type_to_string(t->type),
             t->name);
 
-    nbt_print_value(t->type, t->value);
+    nbt_print_value(t->type, t->value, indent);
 }
 
 void nbt_print_indent(int lv)
@@ -490,9 +488,10 @@ void nbt_print_indent(int lv)
     return;
 }
     
-void nbt_print_value(nbt_type t, void *v)
+void nbt_print_value(nbt_type t, void *v, int n)
 {
     int i;
+    int indent = n;
     char type = (char)t;
 
     //printf("%s", indentation);
@@ -544,7 +543,7 @@ void nbt_print_value(nbt_type t, void *v)
             indent++;
 
             for (i = 0; i < c->length; ++i)
-                nbt_print_tag(c->tags[i]);
+                nbt_print_tag(c->tags[i], indent);
 
             nbt_print_indent(--indent);
             printf("}\n");
@@ -564,7 +563,7 @@ void nbt_print_value(nbt_type t, void *v)
 
                 printf("%s: ", nbt_type_to_string(l->type));
                 void **content = l->content;
-                nbt_print_value(l->type, content[i]);
+                nbt_print_value(l->type, content[i], indent);
 
             }
 
@@ -691,6 +690,33 @@ void nbt_remove_tag(nbt_tag *target, nbt_tag *parent)
     tmp->tags = templist;
     tmp->length = count;
 
+    return;
+}
+
+void nbt_remove_list_item(void *target, nbt_tag *parent)
+{
+    if (parent->type == TAG_LIST)
+    {
+        nbt_list *target_list = nbt_cast_list(parent);
+
+        void **new_list = malloc(sizeof(void *) * target_list->length);
+
+        if (new_list != NULL)
+        {
+            int i, j = 0;
+
+            memset(new_list, 0, sizeof(void *) * target_list->length);
+
+            for (i = 0; i < target_list->length; ++i)
+                if (target_list->content[i] != target)
+                    new_list[j++] = target_list->content[i];
+
+            nbt_set_list(parent, new_list, j, target_list->type);
+
+            free(new_list);
+        }
+    }
+        
     return;
 }
 
@@ -1040,7 +1066,7 @@ int nbt_set_string(nbt_tag *t, char *v)
     return nbt_change_value(t, v, strlen(v) + 1);
 }
 
-int nbt_set_list(nbt_tag *t, void *v, int len, nbt_type type)
+int nbt_set_list(nbt_tag *t, void **v, int len, nbt_type type)
 {
     nbt_list temp;
 
@@ -1053,7 +1079,7 @@ int nbt_set_list(nbt_tag *t, void *v, int len, nbt_type type)
     if (temp.content == NULL)
         return 1;
 
-    memcpy(temp.content, v, len);
+    memcpy(temp.content, v, sizeof(void *) * len);
 
     return nbt_change_value(t, &temp, sizeof(temp));
 }
