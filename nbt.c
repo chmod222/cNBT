@@ -737,17 +737,14 @@ void nbt_remove_list_item(void *target, nbt_tag *parent)
     return;
 }
 
-nbt_tag *nbt_find_tag_by_name(const char *needle, nbt_tag *haystack)
+nbt_tag *nbt_find_tag_by_name(const char *needle, nbt_compound *haystack)
 {
-    if (haystack->type == TAG_COMPOUND)
-    {
-        nbt_compound *c = (nbt_compound *)haystack->value;
-        int i;
+    nbt_compound *c = haystack;
+    int i;
 
-        for (i = 0; i < c->length; ++i)
-            if (strcmp(c->tags[i]->name, needle) == 0)
-                return c->tags[i];
-    }
+    for (i = 0; i < c->length; ++i)
+        if (strcmp(c->tags[i]->name, needle) == 0)
+            return c->tags[i];
 
     return NULL;
 }

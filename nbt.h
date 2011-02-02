@@ -121,7 +121,7 @@ nbt_tag *nbt_add_tag(nbt_tag *child, nbt_tag *parent);
 void nbt_remove_tag(nbt_tag *target, nbt_tag *parent);
 void nbt_remove_list_item(void *target, nbt_tag *parent);
 
-nbt_tag *nbt_find_tag_by_name(const char *needle, nbt_tag *haystack);
+nbt_tag *nbt_find_tag_by_name(const char *needle, nbt_compound *haystack);
 
 int nbt_write(nbt_file *nbt, const char *filename); 
 int nbt_write_tag(nbt_file *nbt, nbt_tag *tag);
