@@ -238,7 +238,7 @@ int main(int argc, char **argv)
         else
         {
             /* data will not be NULL, no check needed */
-            nbt_tag *data = nbt_find_tag_by_name("Data", nbt->root);
+            nbt_compound *data = nbt_cast_compound(nbt_find_tag_by_name("Data", nbt_cast_compound(nbt->root)));
 
             if (opt_verbose) printf("success!\n\n");
 
@@ -368,7 +368,7 @@ int valid_level(nbt_tag *root)
 {
     if (root->type == TAG_COMPOUND)
     {
-        nbt_tag *data = nbt_find_tag_by_name("Data", root);
+        nbt_tag *data = nbt_find_tag_by_name("Data", nbt_cast_compound(root));
 
         if (data != NULL)
         {

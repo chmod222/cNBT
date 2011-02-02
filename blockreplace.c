@@ -19,12 +19,12 @@ void print_usage(const char *program_name)
 int valid_chunk(nbt_tag *nbtroot)
 {
     /* Check valid root element */
-    nbt_tag *root = nbt_find_tag_by_name("Level", nbtroot);
+    nbt_tag *root = nbt_find_tag_by_name("Level", nbt_cast_compound(nbtroot));
 
     if ((root != NULL) && 
         (strcmp(root->name, "Level") == 0) && (root->type == TAG_COMPOUND))
     {
-        nbt_tag *blocks = nbt_find_tag_by_name("Blocks", root);
+        nbt_tag *blocks = nbt_find_tag_by_name("Blocks", nbt_cast_compound(root));
 
         if ((blocks != NULL) && (blocks->type == TAG_BYTE_ARRAY))
         {
@@ -141,7 +141,7 @@ int main(int argc, char **argv)
 
             nbt_byte_array *arr;
             nbt_tag *blocks = nbt_find_tag_by_name("Blocks", 
-                                    nbt_find_tag_by_name("Level", nf->root));
+                                    nbt_cast_compound(nbt_find_tag_by_name("Level", nbt_cast_compound(nf->root))));
 
             /* 'blocks' cannot be NULL as we already confirmed a valid file */
             assert(blocks != NULL);
