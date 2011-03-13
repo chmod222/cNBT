@@ -1,9 +1,10 @@
 #ifndef ENDIANNESS_H
 #define ENDIANNESS_H
 
+#include <stddef.h>
 #include <stdint.h>
 
-#define L_ENDIAN 0
+#define L_ENDIAN    0
 #define B_ENDIAN    1
 
 static inline int get_endianness()
@@ -16,13 +17,6 @@ static inline int get_endianness()
     return t.c[0] == 0;
 }
 
-uint64_t swpd(double d);
-double uswpd(uint64_t d);
-
-float swapf(float);
-double swapd(double);
-void swaps(uint16_t *x);
-void swapi(uint32_t *x);
-void swapl(uint64_t *x);
+void* swap_bytes(void* s, size_t len);
 
 #endif

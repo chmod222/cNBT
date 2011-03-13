@@ -94,12 +94,12 @@ int nbt_parse(nbt_file *nbt, const char *filename);
 int nbt_read_tag(nbt_file *nbt, nbt_tag **parent);
 int nbt_read(nbt_file *nbt, nbt_type type, void **parent);
 
-int nbt_read_byte(nbt_file *nbt, char **out);
-int nbt_read_short(nbt_file *nbt, int16_t **out);
-int nbt_read_int(nbt_file *nbt, int32_t **out);
-int nbt_read_long(nbt_file *nbt, int64_t **out);
-int nbt_read_float(nbt_file *nbt, float **out);
-int nbt_read_double(nbt_file *nbt, double **out);
+nbt_status nbt_read_byte(nbt_file *nbt, char **out);
+nbt_status nbt_read_short(nbt_file *nbt, int16_t **out);
+nbt_status nbt_read_int(nbt_file *nbt, int32_t **out);
+nbt_status nbt_read_long(nbt_file *nbt, int64_t **out);
+nbt_status nbt_read_float(nbt_file *nbt, float **out);
+nbt_status nbt_read_double(nbt_file *nbt, double **out);
 int nbt_read_byte_array(nbt_file *nbt, unsigned char **out);
 int nbt_read_string(nbt_file *nbt, char **out);
 int32_t nbt_read_list(nbt_file *nbt, char *type_out, void ***target);

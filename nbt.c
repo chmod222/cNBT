@@ -70,7 +70,7 @@ int nbt_read(nbt_file *nbt, nbt_type type, void **parent)
     switch (type)
     {
         case TAG_END:
-            break; 
+            break;
 
         case TAG_BYTE:
             nbt_read_byte(nbt, (char **)parent);
@@ -80,7 +80,7 @@ int nbt_read(nbt_file *nbt, nbt_type type, void **parent)
         case TAG_SHORT:
             nbt_read_short(nbt, (int16_t **)parent);
 
-            break;
+        break;
 
         case TAG_INT:
             nbt_read_int(nbt, (int32_t **)parent);
@@ -167,75 +167,29 @@ int nbt_read_byte(nbt_file *nbt, char **out)
     return 0;
 }
 
-int nbt_read_short(nbt_file *nbt, int16_t **out)
-{
-    int16_t t;
+#define DEF_READ_INTEGRAL_FUNC(name, type)                  \
+    nbt_status nbt_read_##name (nbt_file* nbt, type** out)  \
+    {                                                       \
+        type t;                                             \
+                                                            \
+        gzread(nbt->fp, &t, sizeof t);                      \
+        if(get_endianness() == L_ENDIAN)                    \
+            swap_bytes(&t, sizeof t);                       \
+                                                            \
+        *out = malloc(sizeof t);                            \
+        if(*out == NULL)                                    \
+            return NBT_EMEM;                                \
+                                                            \
+        memcpy(*out, &t, sizeof *out);                      \
+                                                            \
+        return NBT_OK;                                      \
+    }
 
-    gzread(nbt->fp, &t, sizeof(t));
-    if (get_endianness() == L_ENDIAN)
-        swaps((uint16_t *)&t);
-
-    *out = malloc(sizeof(int16_t));
-    memcpy(*out, &t, sizeof(int16_t));
-
-    return 0;
-}
-
-int nbt_read_int(nbt_file *nbt, int32_t **out)
-{
-    int32_t t;
-
-    gzread(nbt->fp, &t, sizeof(t));
-    if (get_endianness() == L_ENDIAN)
-        swapi((uint32_t *)&t);
-
-    *out = malloc(sizeof(int32_t));
-    memcpy(*out, &t, sizeof(int32_t));
-
-    return 0;
-}
-
-int nbt_read_long(nbt_file *nbt, int64_t **out)
-{
-    int64_t t;
-
-    gzread(nbt->fp, &t, sizeof(t));
-    if (get_endianness() == L_ENDIAN)
-        swapl((uint64_t *)&t);
-
-    *out = malloc(sizeof(int64_t));
-    memcpy(*out, &t, sizeof(int64_t));
-
-    return 0;
-}
-
-int nbt_read_float(nbt_file *nbt, float **out)
-{
-    float t;
-
-    gzread(nbt->fp, &t, sizeof(t));
-    if (get_endianness() == L_ENDIAN)
-        t = swapf(t);
-
-    *out = malloc(sizeof(float));
-    memcpy(*out, &t, sizeof(float));
-
-    return 0;
-}
-
-int nbt_read_double(nbt_file *nbt, double **out)
-{
-    double t;
-
-    gzread(nbt->fp, &t, sizeof(t));
-    if (get_endianness() == L_ENDIAN)
-        t = swapd(t);
-
-    *out = malloc(sizeof(double));
-    memcpy(*out, &t, sizeof(double));
-
-    return 0;
-}
+DEF_READ_INTEGRAL_FUNC(short, int16_t)
+DEF_READ_INTEGRAL_FUNC(int, int32_t)
+DEF_READ_INTEGRAL_FUNC(long, int64_t)
+DEF_READ_INTEGRAL_FUNC(float, float)
+DEF_READ_INTEGRAL_FUNC(double, double)
 
 int nbt_read_byte_array(nbt_file *nbt, unsigned char **out)
 {
@@ -243,7 +197,7 @@ int nbt_read_byte_array(nbt_file *nbt, unsigned char **out)
 
     gzread(nbt->fp, &len, sizeof(len));
     if (get_endianness() == L_ENDIAN)
-        swapi((uint32_t *)&len);
+        swap_bytes(&len, sizeof(len));
 
     *out = malloc(len);
     gzread(nbt->fp, *out, len);
@@ -257,7 +211,7 @@ int nbt_read_string(nbt_file *nbt, char **out)
 
     gzread(nbt->fp, &len, sizeof(len));
     if (get_endianness() == L_ENDIAN)
-        swaps((uint16_t *)&len);
+        swap_bytes(&len, sizeof(len));
 
     *out = malloc(len + 1);
     memset(*out, 0, len + 1);
@@ -270,7 +224,7 @@ int32_t nbt_read_list(nbt_file *nbt, char *type_out, void ***target)
 {
     char type;
     int32_t len;
-    int i;
+    int32_t i;
 
     gzread(nbt->fp, &type, 1);
     *type_out = type;
@@ -278,7 +232,7 @@ int32_t nbt_read_list(nbt_file *nbt, char *type_out, void ***target)
     gzread(nbt->fp, &len, sizeof(len));
 
     if (get_endianness() == L_ENDIAN)
-        swapi((uint32_t *)&len);
+        swap_bytes(&len, sizeof(len));
 
 
     *target = malloc(len * sizeof(void *));
@@ -293,7 +247,7 @@ int32_t nbt_read_compound(nbt_file *nbt, nbt_tag ***listptr)
 {
     int32_t i;
 
-    *listptr = malloc(sizeof(nbt_tag *)); 
+    *listptr = malloc(sizeof(nbt_tag *));
 
     for (i = 0;; ++i)
     {
@@ -408,60 +362,26 @@ int nbt_free_compound(nbt_compound *c)
 
 char *nbt_type_to_string(nbt_type t)
 {
-    static char *str;
+#define DEF_CASE(label) case label: return #label
 
     switch (t)
     {
-        case TAG_END:
-            str = "TAG_END";
-            break;
+        DEF_CASE(TAG_END);
+        DEF_CASE(TAG_BYTE);
+        DEF_CASE(TAG_SHORT);
+        DEF_CASE(TAG_INT);
+        DEF_CASE(TAG_LONG);
+        DEF_CASE(TAG_FLOAT);
+        DEF_CASE(TAG_DOUBLE);
+        DEF_CASE(TAG_BYTE_ARRAY);
+        DEF_CASE(TAG_STRING);
+        DEF_CASE(TAG_LIST);
+        DEF_CASE(TAG_COMPOUND);
 
-        case TAG_BYTE:
-            str = "TAG_BYTE";
-            break;
-
-        case TAG_SHORT:
-            str = "TAG_SHORT";
-            break;
-
-        case TAG_INT:
-            str = "TAG_INT";
-            break;
-
-        case TAG_LONG:
-            str = "TAG_LONG";
-            break;
-
-        case TAG_FLOAT:
-            str = "TAG_FLOAT";
-            break;
-
-        case TAG_DOUBLE:
-            str = "TAG_DOUBLE";
-            break;
-
-        case TAG_BYTE_ARRAY:
-            str = "TAG_BYTE_ARRAY";
-            break;
-
-        case TAG_STRING:
-            str = "TAG_STRING";
-            break;
-
-        case TAG_LIST:
-            str = "TAG_LIST";
-            break;
-
-        case TAG_COMPOUND:
-            str = "TAG_COMPOUND";
-            break;
-
-        default:
-            str = "TAG_Unknown";
-            break;
+        default: return "TAG_UNKNOWN";
     }
 
-    return str;
+#undef DEF_CASE
 }
 
 void nbt_print_tag(nbt_tag *t, int indent)
@@ -848,62 +768,24 @@ int nbt_write_value(nbt_file *nbt, nbt_type t, void *value)
     return written;
 }
 
-int nbt_write_byte(nbt_file *nbt, char *val)
-{
-    /* bytes, simple enough */
-    return gzwrite(nbt->fp, val, sizeof(char));
-}
+/* this is broken. Why don't we just pass by value like sane people? */
+#define DEF_WRITE_INTEGRAL_FUNC(name, type)         \
+    int nbt_write_##name (nbt_file* nbt, type* val) \
+    {                                               \
+        type t = *val;                              \
+                                                    \
+        if(get_endianness() == L_ENDIAN)            \
+            swap_bytes(&t, sizeof t);               \
+                                                    \
+        return gzwrite(nbt->fp, &t, sizeof t);      \
+    }
 
-int nbt_write_short(nbt_file *nbt, int16_t *val)
-{
-    int16_t temp = *val;
-
-    /* Needs swapping first? */
-    if (get_endianness() == L_ENDIAN)
-        swaps((uint16_t *)&temp);
-
-    return gzwrite(nbt->fp, &temp, sizeof(int16_t));
-}
-
-int nbt_write_int(nbt_file *nbt, int32_t *val)
-{
-    int32_t temp = *val;
-
-    if (get_endianness() == L_ENDIAN)
-        swapi((uint32_t *)&temp);
-
-    return gzwrite(nbt->fp, &temp, sizeof(int32_t));
-}
-
-int nbt_write_long(nbt_file *nbt, int64_t *val)
-{
-    int64_t temp = *val;
-
-    if (get_endianness() == L_ENDIAN)
-        swapl((uint64_t *)&temp);
-
-    return gzwrite(nbt->fp, &temp, sizeof(int64_t));
-}
-
-int nbt_write_float(nbt_file *nbt, float *val)
-{
-    float temp = *val;
-
-    if (get_endianness() == L_ENDIAN)
-        temp = swapf(temp);
-
-    return gzwrite(nbt->fp, &temp, sizeof(float));
-}
-
-int nbt_write_double(nbt_file *nbt, double *val)
-{
-    double temp = *val;
-
-    if (get_endianness() == L_ENDIAN)
-        temp = swapd(temp);
-
-    return gzwrite(nbt->fp, &temp, sizeof(double));
-}
+DEF_WRITE_INTEGRAL_FUNC(byte, char)
+DEF_WRITE_INTEGRAL_FUNC(short, int16_t)
+DEF_WRITE_INTEGRAL_FUNC(int, int32_t)
+DEF_WRITE_INTEGRAL_FUNC(long, int64_t)
+DEF_WRITE_INTEGRAL_FUNC(float, float)
+DEF_WRITE_INTEGRAL_FUNC(double, double)
 
 int nbt_write_string(nbt_file *nbt, char *val)
 {
@@ -959,117 +841,37 @@ int nbt_write_compound(nbt_file *nbt, nbt_compound *val)
     return size;
 }
 
-char *nbt_cast_byte(nbt_tag *t)
-{
-    if (t->type != TAG_BYTE) return NULL;
+#define DEF_CAST_FUNC(name, tag, Type)  \
+    Type* nbt_cast_##name (nbt_tag* t)  \
+    {                                   \
+        if(t->type != tag) return NULL; \
+        return (Type*)t->value;         \
+    }
 
-    return (char *)t->value;
-}
+DEF_CAST_FUNC(byte, TAG_BYTE, char)
+DEF_CAST_FUNC(short, TAG_SHORT, int16_t)
+DEF_CAST_FUNC(int, TAG_INT, int32_t)
+DEF_CAST_FUNC(long, TAG_LONG, int64_t)
+DEF_CAST_FUNC(float, TAG_FLOAT, float)
+DEF_CAST_FUNC(double, TAG_DOUBLE, double)
+DEF_CAST_FUNC(string, TAG_STRING, char)
+DEF_CAST_FUNC(list, TAG_LIST, nbt_list)
+DEF_CAST_FUNC(byte_array, TAG_BYTE_ARRAY, nbt_byte_array)
+DEF_CAST_FUNC(compound, TAG_COMPOUND, nbt_compound)
 
-int16_t *nbt_cast_short(nbt_tag *t)
-{
-    if (t->type != TAG_SHORT) return NULL;
+#define DEF_INTEGRAL_SETTER(name, tag, Type)        \
+    int nbt_set_##name(nbt_tag* t, Type v)          \
+    {                                               \
+        if(t->type != tag) return 1;                \
+        return nbt_change_value(t, &v, sizeof v);   \
+    }
 
-    return (int16_t *)t->value;
-}
-
-int32_t *nbt_cast_int(nbt_tag *t)
-{
-    if (t->type != TAG_INT) return NULL;
-
-    return (int32_t *)t->value;
-}
-
-int64_t *nbt_cast_long(nbt_tag *t)
-{
-    if (t->type != TAG_LONG) return NULL;
-
-    return (int64_t *)t->value;
-}
-
-float *nbt_cast_float(nbt_tag *t)
-{
-    if (t->type != TAG_FLOAT) return NULL;
-
-    return (float *)t->value;
-}
-
-double *nbt_cast_double(nbt_tag *t)
-{
-    if (t->type != TAG_DOUBLE) return NULL;
-
-    return (double *)t->value;
-}
-
-char *nbt_cast_string(nbt_tag *t)
-{
-    if (t->type != TAG_STRING) return NULL;
-
-    return (char *)t->value;
-}
-
-nbt_list *nbt_cast_list(nbt_tag *t)
-{
-    if (t->type != TAG_LIST) return NULL;
-
-    return (nbt_list *)t->value;
-}
-
-nbt_byte_array *nbt_cast_byte_array(nbt_tag *t)
-{
-    if (t->type != TAG_BYTE_ARRAY) return NULL;
-
-    return (nbt_byte_array *)t->value;
-}
-
-nbt_compound *nbt_cast_compound(nbt_tag *t)
-{
-    if (t->type != TAG_COMPOUND) return NULL;
-
-    return (nbt_compound *)t->value;
-}
-
-int nbt_set_byte(nbt_tag *t, char v)
-{
-    if (t->type != TAG_BYTE) return 1;
-
-    return nbt_change_value(t, &v, sizeof(v));
-}
-
-int nbt_set_short(nbt_tag *t, int16_t v)
-{
-    if (t->type != TAG_SHORT) return 1;
-
-    return nbt_change_value(t, &v, sizeof(v));
-}
-
-int nbt_set_int(nbt_tag *t, int32_t v)
-{
-    if (t->type != TAG_INT) return 1;
-
-    return nbt_change_value(t, &v, sizeof(v));
-}
-
-int nbt_set_long(nbt_tag *t, int64_t v)
-{
-    if (t->type != TAG_LONG) return 1;
-
-    return nbt_change_value(t, &v, sizeof(v));
-}
-
-int nbt_set_float(nbt_tag *t, float v)
-{
-    if (t->type != TAG_FLOAT) return 1;
-
-    return nbt_change_value(t, &v, sizeof(v));
-}
-
-int nbt_set_double(nbt_tag *t, double v)
-{
-    if (t->type != TAG_DOUBLE) return 1;
-
-    return nbt_change_value(t, &v, sizeof(v));
-}
+DEF_INTEGRAL_SETTER(byte, TAG_BYTE, char)
+DEF_INTEGRAL_SETTER(short, TAG_SHORT, int16_t)
+DEF_INTEGRAL_SETTER(int, TAG_INT, int32_t)
+DEF_INTEGRAL_SETTER(long, TAG_LONG, int64_t)
+DEF_INTEGRAL_SETTER(float, TAG_FLOAT, float)
+DEF_INTEGRAL_SETTER(double, TAG_DOUBLE, double)
 
 int nbt_set_string(nbt_tag *t, char *v)
 {
@@ -1182,61 +984,21 @@ int nbt_new_tag(nbt_tag **d, nbt_type t, const char *name)
     return 0;
 }
 
-int nbt_new_byte(nbt_tag **d, const char *name)
-{
-    if (nbt_new_tag(d, TAG_BYTE, name) != 0)
-        return -1;
+#define DEF_NEW_FUNC(Name, tag, initial)                \
+    int nbt_new_##Name(nbt_tag** d, const char* name)   \
+    {                                                   \
+        if(nbt_new_tag(d, tag, name) != 0)              \
+            return -1;                                  \
+        return nbt_set_##Name(*d, initial);             \
+    }
 
-    return nbt_set_byte(*d, 0);
-}
-
-int nbt_new_short(nbt_tag **d, const char *name)
-{
-    if (nbt_new_tag(d, TAG_SHORT, name) != 0)
-        return -1;
-
-    return nbt_set_short(*d, 0);
-}
-
-int nbt_new_int(nbt_tag **d, const char *name)
-{
-    if (nbt_new_tag(d, TAG_INT, name) != 0)
-        return -1;
-
-    return nbt_set_int(*d, 0);
-}
-
-int nbt_new_long(nbt_tag **d, const char *name)
-{
-    if (nbt_new_tag(d, TAG_LONG, name) != 0)
-        return -1;
-
-    return nbt_set_long(*d, 0);
-}
-
-int nbt_new_float(nbt_tag **d, const char *name)
-{
-    if (nbt_new_tag(d, TAG_FLOAT, name) != 0)
-        return -1;
-
-    return nbt_set_float(*d, 0.0);
-}
-
-int nbt_new_double(nbt_tag **d, const char *name)
-{
-    if (nbt_new_tag(d, TAG_DOUBLE, name) != 0)
-        return -1;
-
-    return nbt_set_double(*d, 0.0);
-}
-
-int nbt_new_string(nbt_tag **d, const char *name)
-{
-    if (nbt_new_tag(d, TAG_STRING, name) != 0)
-        return -1;
-
-    return nbt_set_string(*d, "");
-}
+DEF_NEW_FUNC(byte, TAG_BYTE, 0)
+DEF_NEW_FUNC(short, TAG_SHORT, 0)
+DEF_NEW_FUNC(int, TAG_INT, 0)
+DEF_NEW_FUNC(long, TAG_LONG, 0)
+DEF_NEW_FUNC(float, TAG_FLOAT, 0)
+DEF_NEW_FUNC(double, TAG_DOUBLE, 0)
+DEF_NEW_FUNC(string, TAG_STRING, "")
 
 int nbt_new_byte_array(nbt_tag **d, const char *name)
 {
