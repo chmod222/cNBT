@@ -46,7 +46,7 @@ typedef struct nbt_tag
 {
     nbt_type type; /* Type of the value */
     char *name;    /* tag name */
-    
+
     void *value;   /* value to be casted to the corresponding type */
 
 } nbt_tag;
