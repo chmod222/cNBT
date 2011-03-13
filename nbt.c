@@ -700,7 +700,7 @@ int nbt_write_value(nbt_file *nbt, nbt_type t, void *value)
     {
         DEF_CASE(TAG_BYTE, byte, char);
         DEF_CASE(TAG_SHORT, short, int16_t);
-        DEF_CASE(TAG_INT, int, int16_t);
+        DEF_CASE(TAG_INT, int, int32_t);
         DEF_CASE(TAG_LONG, long, int64_t);
         DEF_CASE(TAG_FLOAT, float, float);
         DEF_CASE(TAG_DOUBLE, double, double);
@@ -711,6 +711,7 @@ int nbt_write_value(nbt_file *nbt, nbt_type t, void *value)
 
         case TAG_END: /* WHY is this even in? */
         default:      /* Maybe moan about a very unknown tag? Not yet... */
+        ;
     }
 
     return 0;
