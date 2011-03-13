@@ -504,16 +504,9 @@ void nbt_print_byte_array(unsigned char *ba, int len)
 {
     int i;
 
-    printf("(%d entries) [", len);
+    printf("(%d entries) [ ", len);
     for (i = 0; i < len; ++i)
-    {
-        printf("%02X", ba[i]);
-
-        if (i == (len - 1))
-            printf(" ");
-        else
-            printf(", ");
-    }
+        printf("%02X ", ba[i]);
 
     printf("]");
 
@@ -562,9 +555,7 @@ void nbt_add_list_item(void *item, nbt_tag *parent)
     l = nbt_cast_list(parent);
 
     if ((l->content = realloc(l->content, sizeof(void *) * (l->length + 1))) != NULL)
-    {
         l->content[l->length++] = item;
-    }
 
     return;
 }
@@ -702,70 +693,29 @@ int nbt_write_tag(nbt_file *nbt, nbt_tag *tag)
 
 int nbt_write_value(nbt_file *nbt, nbt_type t, void *value)
 {
-    int written = 0;
+#define DEF_CASE(tag, name, type) \
+    case tag: return nbt_write_##name(nbt, (type*)value)
 
     switch (t)
     {
+        DEF_CASE(TAG_BYTE, byte, char);
+        DEF_CASE(TAG_SHORT, short, int16_t);
+        DEF_CASE(TAG_INT, int, int16_t);
+        DEF_CASE(TAG_LONG, long, int64_t);
+        DEF_CASE(TAG_FLOAT, float, float);
+        DEF_CASE(TAG_DOUBLE, double, double);
+        DEF_CASE(TAG_STRING, string, char);
+        DEF_CASE(TAG_BYTE_ARRAY, byte_array, nbt_byte_array);
+        DEF_CASE(TAG_LIST, list, nbt_list);
+        DEF_CASE(TAG_COMPOUND, compound, nbt_compound);
+
         case TAG_END: /* WHY is this even in? */
-            break;
-
-        case TAG_BYTE:
-            written = nbt_write_byte(nbt, (char *)value);
-
-            break;
-
-        case TAG_SHORT:
-            written = nbt_write_short(nbt, (int16_t *)value);
-
-            break;
-
-        case TAG_INT:
-            written = nbt_write_int(nbt, (int32_t *)value);
-
-            break;
-
-        case TAG_LONG:
-            written = nbt_write_long(nbt, (int64_t *)value);
-
-            break;
-
-        case TAG_FLOAT:
-            written = nbt_write_float(nbt, (float *)value);
-
-            break;
-
-        case TAG_DOUBLE:
-            written = nbt_write_double(nbt, (double *)value);
-
-            break;
-
-        case TAG_STRING:
-            written = nbt_write_string(nbt, (char *)value);
-
-            break;
-
-        case TAG_BYTE_ARRAY:
-            written = nbt_write_byte_array(nbt, (nbt_byte_array *)value);
-
-            break;
-
-        case TAG_LIST:
-            written = nbt_write_list(nbt, (nbt_list *)value);
-
-            break;
-
-        case TAG_COMPOUND:
-            written = nbt_write_compound(nbt, (nbt_compound *)value);
-
-            break;
-
-        default:
-            /* Maybe moan about a very unknown tag? Not yet... */
-            break;
-
+        default:      /* Maybe moan about a very unknown tag? Not yet... */
     }
 
-    return written;
+    return 0;
+
+#undef DEF_CASE
 }
 
 /* this is broken. Why don't we just pass by value like sane people? */
