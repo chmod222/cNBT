@@ -2,17 +2,6 @@
 
 #include "endianness.h"
 
-int get_endianness()
-{
-    union
-    {
-        uint32_t i;
-        char c[4];
-    } t = { 0x01020304 };
-
-    return t.c[0] == 1;
-}
-
 uint64_t swpd(double d)
 {
     int i;
