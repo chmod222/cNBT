@@ -13,7 +13,6 @@
 
 #include <getopt.h>
 
-#include "endianness.h"
 #include "nbt.h"
 
 static int opt_dupe = 0;

@@ -12,8 +12,38 @@
 #include <zlib.h>
 #include <string.h>
 
-#include "endianness.h"
 #include "nbt.h"
+
+#define L_ENDIAN    0
+#define B_ENDIAN    1
+
+static inline int get_endianness()
+{
+    union {
+        uint16_t i;
+        char c[2];
+    } t = { 0x0001 };
+
+    return t.c[0] == 0;
+}
+
+static inline void* swap_bytes(void* s, size_t len)
+{
+    char* b;
+    char* e;
+
+    for(b = s, e = b + len - 1;
+        b < e;
+        b++, e--)
+    {
+        char t = *b;
+
+        *b = *e;
+        *e = t;
+    }
+
+    return s;
+}
 
 /* Initialization subroutine(s) */
 int nbt_init(nbt_file **nbt)

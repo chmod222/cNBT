@@ -20,7 +20,6 @@ blockreplacer: blockreplace.c libnbt.a
 
 main.o: main.c
 
-libnbt.a: nbt.o endianness.o
-	ar -rcs libnbt.a nbt.o endianness.o
+libnbt.a: nbt.o
+	ar -rcs libnbt.a nbt.o
 nbt.o: nbt.h nbt.c
-endianness.o: endianness.h endianness.c
