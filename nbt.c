@@ -57,11 +57,22 @@ static void* be2ne(void* s, size_t len)
 /* native endian to big endian. works the exact same as its reverse */
 #define ne2be be2ne
 
-/* Does a memcpy, then performs a byteswap on the newly copied memory */
-static void* swapped_memcpy(void* dest, const void* src, size_t n)
+/* A special form of memcpy which copies `n' bytes into `dest', then returns
+ * `src' + n.
+ */
+static const void* memscan(void* dest, const void* src, size_t n)
 {
     memcpy(dest, src, n);
-    return be2ne(dest, n);
+    return (const char*)src + n;
+}
+
+/* Does a memscan, then goes from big endian to native endian on the
+ * destination.
+ */
+static const void* swapped_memscan(void* dest, const void* src, size_t n)
+{
+    const void* ret = memscan(dest, src, n);
+    return be2ne(dest, n), ret;
 }
 
 /*
@@ -74,39 +85,57 @@ static char* read_string(const char** memory, size_t* length)
     char* ret;
 
     if(*length < sizeof string_length) return NULL;
-    swapped_memcpy(&string_length, *memory, sizeof string_length);
 
-    *memory += sizeof string_length;
+    *memory = swapped_memscan(&string_length, *memory, sizeof string_length);
     *length -= sizeof string_length;
 
     if(string_length < 0) return NULL;
     if(*length < (size_t)string_length) return NULL;
 
     ret = malloc(string_length + 1);
-    memcpy(ret, *memory, string_length);
-    ret[string_length] = '\0';
 
-    *memory += string_length;
+    *memory = memscan(ret, *memory, string_length);
     *length -= string_length;
+
+    ret[string_length] = '\0'; /* don't forget to NULL-terminate ;) */
+    return ret;
+}
+
+static struct nbt_byte_array read_byte_array(const char** memory, size_t* length)
+{
+    struct nbt_byte_array ret;
+    ret.data = NULL;
+
+    if(*length < sizeof ret.length)  return ret;
+
+    *memory = swapped_memscan(&ret.length, *memory, sizeof ret.length);
+    *length -= sizeof ret.length;
+
+    if(ret.length < 0)               return ret;
+    if(*length < (size_t)ret.length) return ret;
+
+    ret.data = malloc(ret.length);
+    *memory  = memscan(ret.data, *memory, ret.length);
+    *length -= ret.length;
 
     return ret;
 }
 
 /* TODO: Read a list in from memory */
-static struct tag_list* read_list(const void* memory, size_t length)
+static struct tag_list* read_list(const char** memory, size_t* length)
 {
     struct tag_list* ret = NULL;
     return ret;
 }
 
 /* TODO: Read a compound in from memory */
-static struct tag_list* read_compound(const void* memory, size_t length)
+static struct tag_list* read_compound(const char** memory, size_t* length)
 {
     struct tag_list* ret = NULL;
     return ret;
 }
 
-nbt_node* nbt_parse(const void* memory, size_t length)
+static nbt_node* __nbt_parse(const char** memory, size_t* length)
 {
     nbt_node* node = malloc(sizeof *node);
 
@@ -116,15 +145,18 @@ nbt_node* nbt_parse(const void* memory, size_t length)
         return NULL;
     }
 
-    if(length < 1) goto parse_error;
-    memcpy(&node->type, memory, 1);
+    if(*length < 1) goto parse_error;
 
-    node->name = read_string(&memory, &length);
+    *memory = memscan(&node->type, *memory, 1);
+    *length -= 1;
+
+    node->name = read_string(memory, length);
     if(node->name == NULL) goto parse_error;
 
-#define COPY_INTO_PAYLOAD(payload_name) do {                                                \
-    if(length < sizeof node->payload.payload_name) goto parse_error;                        \
-    swapped_memcpy(&node->payload.payload_name, memory, sizeof node->payload.payload_name); \
+#define COPY_INTO_PAYLOAD(payload_name) do {                                                            \
+    if(*length < sizeof node->payload.payload_name) goto parse_error;                                   \
+    *memory = swapped_memscan(&node->payload.payload_name, *memory, sizeof node->payload.payload_name); \
+    *length -= sizeof node->payload.payload_name;                                                       \
 } while(0)
 
     switch(node->type)
@@ -148,19 +180,11 @@ nbt_node* nbt_parse(const void* memory, size_t length)
         COPY_INTO_PAYLOAD(tag_double);
         break;
     case TAG_BYTE_ARRAY:
-        COPY_INTO_PAYLOAD(tag_byte_array.length);
-        if(node->payload.tag_byte_array.length < 0) goto parse_error;
-        node->payload.tag_byte_array.data = malloc(node->payload.tag_byte_array.length);
-
-        length -= sizeof(int32_t);
-        memory = (const char*)memory + sizeof(int32_t);
-
-        if(length < node->payload.tag_byte_array.length) goto parse_error;
-        memcpy(node->payload.tag_byte_array.data, memory, node->payload.tag_byte_array.length);
-
+        node->payload.tag_byte_array = read_byte_array(memory, length);
+        if(node->payload.tag_byte_array.data == NULL) goto parse_error;
         break;
     case TAG_STRING:
-        node->payload.tag_string = read_string(&memory, &length);
+        node->payload.tag_string = read_string(memory, length);
         if(node->payload.tag_string == NULL) goto parse_error;
         break;
     case TAG_LIST:
@@ -184,6 +208,13 @@ parse_error:
     free(node);
     errno = NBT_ERR;
     return NULL;
+}
+
+nbt_node* nbt_parse(const void* memory, size_t length)
+{
+    const char* mem = memory;
+
+    return __nbt_parse(&mem, &length);
 }
 
 /*
@@ -327,7 +358,7 @@ bool nbt_map(nbt_node* tree, nbt_visitor_t v, void* aux)
     return true;
 }
 
-static struct tag_list* filter_list(const struct tag_list* list, nbt_filter_t filter, void* aux)
+static struct tag_list* filter_list(const struct tag_list* list, nbt_predicate_t filter, void* aux)
 {
     struct tag_list* ret;
 
@@ -345,7 +376,7 @@ static struct tag_list* filter_list(const struct tag_list* list, nbt_filter_t fi
 }
 
 /* TODO: OOM error checking/reporting */
-nbt_node* nbt_filter(const nbt_node* tree, nbt_filter_t filter, void* aux)
+nbt_node* nbt_filter(const nbt_node* tree, nbt_predicate_t filter, void* aux)
 {
     nbt_node* ret;
 
@@ -371,7 +402,7 @@ nbt_node* nbt_filter(const nbt_node* tree, nbt_filter_t filter, void* aux)
     return ret;
 }
 
-static struct tag_list* filter_list_inplace(struct tag_list* list, nbt_filter_t filter, void* aux)
+static struct tag_list* filter_list_inplace(struct tag_list* list, nbt_predicate_t filter, void* aux)
 {
     if(list == NULL) return NULL;
 
@@ -389,7 +420,7 @@ static struct tag_list* filter_list_inplace(struct tag_list* list, nbt_filter_t 
     return list;
 }
 
-nbt_node* nbt_filter_inplace(nbt_node* tree, nbt_filter_t filter, void* aux)
+nbt_node* nbt_filter_inplace(nbt_node* tree, nbt_predicate_t filter, void* aux)
 {
     if(tree == NULL) return NULL;
 
@@ -407,7 +438,7 @@ nbt_node* nbt_filter_inplace(nbt_node* tree, nbt_filter_t filter, void* aux)
     return tree;
 }
 
-static nbt_node* find_list(struct tag_list* list, nbt_filter_t filter, void* aux)
+static nbt_node* find_list(struct tag_list* list, nbt_predicate_t filter, void* aux)
 {
     nbt_node* found;
 
@@ -416,7 +447,7 @@ static nbt_node* find_list(struct tag_list* list, nbt_filter_t filter, void* aux
     else               return find_list(list->next, filter, aux);
 }
 
-nbt_node* nbt_find(nbt_node* tree, nbt_filter_t filter, void* aux)
+nbt_node* nbt_find(nbt_node* tree, nbt_predicate_t filter, void* aux)
 {
     if(tree == NULL)      return NULL;
     if(filter(tree, aux)) return tree;
@@ -428,6 +459,28 @@ nbt_node* nbt_find(nbt_node* tree, nbt_filter_t filter, void* aux)
         return find_list(tree->payload.tag_compound, filter, aux);
 
     return NULL;
+}
+
+static size_t list_size(struct tag_list* list)
+{
+    if(list == NULL) return 0;
+
+    return 1 + nbt_size(list->data) + list_size(list->next);
+}
+
+size_t nbt_size(nbt_node* tree)
+{
+    if(tree == NULL) return 0;
+
+    switch(tree->type)
+    {
+    case TAG_LIST:
+    case TAG_COMPOUND:
+        return list_size(tree->payload.tag_list);
+
+    default:
+        return 1;
+    }
 }
 
 const char* nbt_type_to_string(nbt_type t)

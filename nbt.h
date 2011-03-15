@@ -14,6 +14,7 @@
 extern "C" {
 #endif
 
+#include <stddef.h> /* for size_t */
 #include <stdint.h>
 #include <stdio.h> /* for FILE* */
 
@@ -73,7 +74,7 @@ typedef struct nbt_node {
         float   tag_float;
         double  tag_double;
 
-        struct {
+        struct nbt_byte_array {
             unsigned char* data;
             int32_t length;
         } tag_byte_array;
@@ -147,42 +148,47 @@ void nbt_free(nbt_node*);
 typedef bool (*nbt_visitor_t)(nbt_node* node, void* aux);
 
 /*
- * A functions which returns whether or not `node' should remain in the tree.
- * `aux' is an optional parameter which will be passed to your filter from the
- * parent function.
+ * A function which directs the overall algorithm with its return type.
+ * `aux' is an optional parameter which will be passed to your predicate from
+ * the parent function.
  */
-typedef bool (*nbt_filter_t)(const nbt_node* node, void* aux);
+typedef bool (*nbt_predicate_t)(const nbt_node* node, void* aux);
 
 /*
  * Traverses the tree until a visitor says stop or all elements are exhausted.
  * Returns false if it was terminated by a visitor, true otherwise. In most
  * cases this can be ignored.
+ *
  * TODO: Is there a way to do this without expensive function pointers? Maybe
  * something like the kernel's list_for_each_entry?
  */
 bool nbt_map(nbt_node* tree, nbt_visitor_t, void* aux);
 
 /*
- * Returns a new tree, consisting of all the nodes the filter returned `true'
- * for. If there are no nodes in the tree, this function will return NULL.
+ * Returns a new tree, consisting of a copy of all the nodes the predicate
+ * returned `true' for. If the new tree is empty, this function will return
+ * NULL.
  */
-nbt_node* nbt_filter(const nbt_node* tree, nbt_filter_t, void* aux);
+nbt_node* nbt_filter(const nbt_node* tree, nbt_predicate_t, void* aux);
 
 /*
  * The exact same as nbt_filter, except instead of returning a new tree, the
  * existing tree is modified in place, and then returned for convenience.
  */
-nbt_node* nbt_filter_inplace(nbt_node* tree, nbt_filter_t, void* aux);
+nbt_node* nbt_filter_inplace(nbt_node* tree, nbt_predicate_t, void* aux);
 
 /*
- * Returns the first node which causes the filter to return true. If all nodes
- * are rejected, NULL is returned. If you want to find every instance of
- * something, consider using nbt_map.
+ * Returns the first node which causes the predicate to return true. If all
+ * nodes are rejected, NULL is returned. If you want to find every instance of
+ * something, consider using nbt_map with a visitor that keeps track.
  *
  * Since const-ing `tree' would me const-ing the return value, you'll just have
  * to take my word for it that nbt_find DOES NOT modify the tree.
  */
-nbt_node* nbt_find(nbt_node* tree, nbt_filter_t, void* aux);
+nbt_node* nbt_find(nbt_node* tree, nbt_predicate_t, void* aux);
+
+/* Returns the number of nodes in the tree. */
+size_t nbt_size(nbt_node* tree);
 
 /*
  * Converts a type to a print-friendly string. The string is statically
