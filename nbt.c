@@ -407,6 +407,29 @@ nbt_node* nbt_filter_inplace(nbt_node* tree, nbt_filter_t filter, void* aux)
     return tree;
 }
 
+static nbt_node* find_list(struct tag_list* list, nbt_filter_t filter, void* aux)
+{
+    nbt_node* found;
+
+    if(list == NULL)                                return NULL;
+    if((found = nbt_find(list->data, filter, aux))) return found;
+    else               return find_list(list->next, filter, aux);
+}
+
+nbt_node* nbt_find(nbt_node* tree, nbt_filter_t filter, void* aux)
+{
+    if(tree == NULL)      return NULL;
+    if(filter(tree, aux)) return tree;
+
+    if(tree->type == TAG_LIST)
+        return find_list(tree->payload.tag_list, filter, aux);
+
+    if(tree->type == TAG_COMPOUND)
+        return find_list(tree->payload.tag_compound, filter, aux);
+
+    return NULL;
+}
+
 const char* nbt_type_to_string(nbt_type t)
 {
 #define DEF_CASE(name) case name: return #name;

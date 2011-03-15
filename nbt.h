@@ -175,6 +175,16 @@ nbt_node* nbt_filter(const nbt_node* tree, nbt_filter_t, void* aux);
 nbt_node* nbt_filter_inplace(nbt_node* tree, nbt_filter_t, void* aux);
 
 /*
+ * Returns the first node which causes the filter to return true. If all nodes
+ * are rejected, NULL is returned. If you want to find every instance of
+ * something, consider using nbt_map.
+ *
+ * Since const-ing `tree' would me const-ing the return value, you'll just have
+ * to take my word for it that nbt_find DOES NOT modify the tree.
+ */
+nbt_node* nbt_find(nbt_node* tree, nbt_filter_t, void* aux);
+
+/*
  * Converts a type to a print-friendly string. The string is statically
  * allocated, and therefore does not have to be freed by the user.
 */
