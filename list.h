@@ -3,10 +3,15 @@
 
 #include <stddef.h>
 
-/* This file is from Linux Kernel (include/linux/list.h) 
+/*
+ * This file is from Linux Kernel (include/linux/list.h)
  * and modified by simply removing hardware prefetching of list items.
  * Here by copyright, credits attributed to wherever they belong.
  * Kulesh Shanmugasundaram (kulesh [squiggly] isis.poly.edu)
+ *
+ * I believe it is GPLv2, which DOES conflict with our Beer-ware license. If
+ * anyone from linux wishes me to remove it, I will comply. Until then, it's
+ * just so damn elegant...
  */
 
 /*
