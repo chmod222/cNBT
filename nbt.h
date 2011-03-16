@@ -15,24 +15,12 @@
 extern "C" {
 #endif
 
+#include <stdbool.h>
 #include <stddef.h> /* for size_t */
 #include <stdint.h>
-#include <stdio.h> /* for FILE* */
+#include <stdio.h>  /* for FILE* */
 
-#include "list.h" /* For struct list_entry etc. */
-
-/* I wish I could just use stdbool.h :( */
-#ifndef bool
-#define bool int
-#endif
-
-#ifndef true
-#define true 1
-#endif
-
-#ifndef false
-#define false 0
-#endif
+#include "list.h"   /* For struct list_entry etc. */
 
 typedef enum {
     NBT_OK   =  0, /* No error. */
@@ -92,9 +80,8 @@ typedef struct nbt_node {
          * irrelevant. One tradeoff of this design is that we don't get tight
          * list packing when memory is a concern and huge lists are created.
          *
-         * For more information on using the linked list, see `list.h'. It was
-         * ripped wholesale from the linux kernel, so feel free to see driver
-         * source code for usage information.
+         * For more information on using the linked list, see `list.h'. The API
+         * is well documented.
          */
         struct tag_list {
             struct nbt_node* data; /* A single node's data. */
@@ -132,6 +119,14 @@ nbt_node* nbt_parse_file(FILE* fp);
  * Please check your damn error codes.
  */
 nbt_status nbt_dump_ascii(const nbt_node* tree, FILE* fp);
+
+/*
+ * Dumps an nbt tree to a file in Notch's official binary format. Trees dumped
+ * with this function can be regenerated with nbt_parse_file.
+ *
+ * If an error occurs, this function will return the appropriate nbt_status.
+ * Please check your damn error codes.
+ */
 nbt_status nbt_dump_binary(const nbt_node* tree, FILE* fp);
 
 /*
@@ -167,7 +162,7 @@ typedef bool (*nbt_predicate_t)(const nbt_node* node, void* aux);
  * cases this can be ignored.
  *
  * TODO: Is there a way to do this without expensive function pointers? Maybe
- * something like the kernel's list_for_each_entry?
+ * something like list_for_each?
  */
 bool nbt_map(nbt_node* tree, nbt_visitor_t, void* aux);
 
@@ -175,6 +170,9 @@ bool nbt_map(nbt_node* tree, nbt_visitor_t, void* aux);
  * Returns a new tree, consisting of a copy of all the nodes the predicate
  * returned `true' for. If the new tree is empty, this function will return
  * NULL. If an out of memory error occured, errno will be set to NBT_EMEM.
+ *
+ * TODO: What if I want to keep a tree and all of its children? Do I need to
+ * augment nbt_node with parent pointers?
  */
 nbt_node* nbt_filter(const nbt_node* tree, nbt_predicate_t, void* aux);
 
