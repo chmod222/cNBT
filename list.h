@@ -4,22 +4,6 @@
 #include <stddef.h>
 
 /*
- * Minimal List API:
- *
- * struct list_head;
- *
- * INIT_LIST_HEAD(head)
- *
- * list_add_tail(new, head)
- * list_del(pos)
- * list_empty(head)
- * list_length(head)
- * list_for_each(pos, head)
- * list_for_each_safe(pos, n, head)
- * list_entry(ptr, type, member)
- */
-
-/*
  * Represents a single entry in the list. This must be embedded in your linked
  * structure.
  */
