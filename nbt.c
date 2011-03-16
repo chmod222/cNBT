@@ -12,6 +12,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -436,9 +437,99 @@ nbt_node* nbt_parse_file(FILE* fp)
     return ret;
 }
 
+static void indent(FILE* fp, size_t amount)
+{
+    size_t i;
+
+    for(i = 0; i < amount; i++)
+        fprintf(fp, "    ");
+}
+
+static nbt_status __nbt_dump_ascii(const nbt_node* tree, FILE* fp, size_t ident);
+
+#define SAFE_NAME(node) ((node)->name ? (node)->name : "")
+
+static void dump_byte_array(const struct nbt_byte_array ba, FILE* fp)
+{
+    int32_t i;
+
+    fprintf(fp, "[ ");
+    for(i = 0; i < ba.length; ++i)
+        fprintf(fp, "%i ", (int)ba.data[i]);
+    fprintf(fp, "]");
+}
+
+static nbt_status dump_list_contents_ascii(const struct tag_list* list, FILE* fp, size_t ident)
+{
+    const struct list_head* pos;
+
+    list_for_each(pos, &list->entry)
+    {
+        const struct tag_list* entry = list_entry(pos, const struct tag_list, entry);
+        nbt_status err;
+
+        if((err = __nbt_dump_ascii(entry->data, fp, ident)) != NBT_OK)
+            return err;
+    }
+
+    return NBT_OK;
+}
+
+static nbt_status __nbt_dump_ascii(const nbt_node* tree, FILE* fp, size_t ident)
+{
+    nbt_status err;
+
+    indent(fp, ident);
+
+    if(tree->type == TAG_BYTE)
+        fprintf(fp, "TAG_Byte(\"%s\"): %i\n", SAFE_NAME(tree), (int)tree->payload.tag_byte);
+    else if(tree->type == TAG_SHORT)
+        fprintf(fp, "TAG_Short(\"%s\"): %i\n", SAFE_NAME(tree), (int)tree->payload.tag_short);
+    else if(tree->type == TAG_INT)
+        fprintf(fp, "TAG_Int(\"%s\"): %i\n", SAFE_NAME(tree), (int)tree->payload.tag_int);
+    else if(tree->type == TAG_LONG)
+        fprintf(fp, "TAG_Long(\"%s\"): %" PRIi64 "\n", SAFE_NAME(tree), tree->payload.tag_long);
+    else if(tree->type == TAG_FLOAT)
+        fprintf(fp, "TAG_Float(\"%s\"): %f\n", SAFE_NAME(tree), (double)tree->payload.tag_float);
+    else if(tree->type == TAG_DOUBLE)
+        fprintf(fp, "TAG_Double(\"%s\"): %f\n", SAFE_NAME(tree), tree->payload.tag_double);
+    else if(tree->type == TAG_BYTE_ARRAY)
+    {
+        fprintf(fp, "TAG_Byte_Array(\"%s\"): ", SAFE_NAME(tree));
+        dump_byte_array(tree->payload.tag_byte_array, fp);
+        fprintf(fp, "\n");
+    }
+    else if(tree->type == TAG_STRING)
+    {
+        if(tree->payload.tag_string == NULL)
+            return NBT_ERR;
+
+        fprintf(fp, "TAG_String(\"%s\"): %s\n", SAFE_NAME(tree), tree->payload.tag_string);
+    }
+    else if(tree->type == TAG_LIST)
+    {
+        fprintf(fp, "TAG_List(\"%s\")\n{\n", SAFE_NAME(tree));
+        if((err = dump_list_contents_ascii(tree->payload.tag_list, fp, ident + 1)) != NBT_OK)
+            return err;
+        fprintf(fp, "}\n");
+    }
+    else if(tree->type == TAG_COMPOUND)
+    {
+        fprintf(fp, "TAG_Compound(\"%s\")\n{\n", SAFE_NAME(tree));
+        if((err = dump_list_contents_ascii(tree->payload.tag_compound, fp, ident + 1)) != NBT_OK)
+            return err;
+        fprintf(fp, "}\n");
+    }
+
+    else
+        return NBT_ERR;
+
+    return NBT_OK;
+}
+
 nbt_status nbt_dump_ascii(const nbt_node* tree, FILE* fp)
 {
-    return NBT_OK; /* TODO */
+    return __nbt_dump_ascii(tree, fp, 0);
 }
 
 static nbt_status dump_byte_array_binary(const struct nbt_byte_array ba, gzFile fp)
@@ -487,20 +578,20 @@ static nbt_status dump_string_binary(const char* name, gzFile fp)
 static nbt_type list_is_homogenous(const struct tag_list* list)
 {
     const struct list_head* pos;
-    nbt_type type = 0;
+    nbt_type type = TAG_INVALID;
 
     list_for_each(pos, &list->entry)
     {
         const struct tag_list* cur = list_entry(pos, const struct tag_list, entry);
 
         assert(cur->data->type);
-        if(cur->data->type == 0)
-            return 0; /* Invalid type. */
+        if(cur->data->type == TAG_INVALID)
+            return TAG_INVALID;
 
-        if(type == 0) type = cur->data->type;
+        if(type == TAG_INVALID) type = cur->data->type;
 
         if(type != cur->data->type)
-            return 0;
+            return TAG_INVALID;
     }
 
     return type;
@@ -523,7 +614,7 @@ static nbt_status dump_list_binary(const struct tag_list* list, gzFile fp)
         return NBT_ERR;
 
     assert(list_is_homogenous(list));
-    if((type = list_is_homogenous(list)) == 0)
+    if((type = list_is_homogenous(list)) == TAG_INVALID)
         return NBT_ERR;
 
     if(gzwrite(fp, &type, 1) == 0)
