@@ -440,33 +440,36 @@ parse_error:
 nbt_node* nbt_parse_file(FILE* fp)
 {
     nbt_node* ret;
-    buffer_t buf;
+    buffer_t buf = { NULL, 0 };
+    int fd;
+    gzFile f = Z_NULL;
 
-    gzFile f = gzdopen(fileno(fp), "rb");
+    if(fp == NULL) return NULL;
 
-    if(f == NULL)
-    {
-        errno = NBT_EGZ;
-        return NULL;
-    }
+    fd = fileno(fp);
+    if(fd == -1)    goto parse_error;
+
+    f = gzdopen(fd, "rb");
+    if(f == Z_NULL) goto parse_error;
 
     buf = __parse_file(f);
 
-    if(buf.d == NULL) /* errno was set by __parse_file */
-        return NULL;
-
-    if(gzclose(f) != Z_OK)
-    {
-        errno = NBT_EGZ;
-        free(buf.d);
-        return NULL;
-    }
+    if(buf.d == NULL)      goto parse_error;
+    if(gzclose(f) != Z_OK) goto parse_error;
 
     ret = nbt_parse(buf.d, buf.l);
 
     free(buf.d);
 
     return ret;
+
+parse_error:
+    if(errno == NBT_OK)
+        errno = NBT_EGZ;
+
+    free(buf.d);
+    gzclose(f);
+    return NULL;
 }
 
 static void indent(FILE* fp, size_t amount)
@@ -510,6 +513,8 @@ static nbt_status dump_list_contents_ascii(const struct tag_list* list, FILE* fp
 static nbt_status __nbt_dump_ascii(const nbt_node* tree, FILE* fp, size_t ident)
 {
     nbt_status err;
+
+    if(tree == NULL) return NBT_OK;
 
     indent(fp, ident);
 
@@ -561,8 +566,6 @@ static nbt_status __nbt_dump_ascii(const nbt_node* tree, FILE* fp, size_t ident)
 
 nbt_status nbt_dump_ascii(const nbt_node* tree, FILE* fp)
 {
-    if(tree == 0) return NBT_ERR;
-
     return __nbt_dump_ascii(tree, fp, 0);
 }
 
