@@ -137,7 +137,7 @@ static char* read_string(const char** memory, size_t* length)
 
     READ_GENERIC(&string_length, sizeof string_length, swapped_memscan, goto parse_error);
 
-    if(string_length < 0) goto parse_error;
+    if(string_length < 0)               goto parse_error;
     if(*length < (size_t)string_length) goto parse_error;
 
     CHECKED_MALLOC(ret, string_length + 1,
