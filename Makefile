@@ -5,7 +5,7 @@
 # this stuff is worth it, you can buy me a beer in return. Lukas Niederbremer.
 # -----------------------------------------------------------------------------
 
-CFLAGS=-g -Wall
+CFLAGS=-g -Wall -std=c99 -pedantic
 
 all: nbtreader datlevel blockreplacer
 
