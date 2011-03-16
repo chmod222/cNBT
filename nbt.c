@@ -866,19 +866,15 @@ static struct tag_list* filter_list(const struct tag_list* list, nbt_predicate_t
     list_for_each(pos, &list->entry)
     {
         const struct tag_list* p = list_entry(pos, struct tag_list, entry);
+        struct tag_list* new_entry;
 
-        struct tag_list* new = malloc(sizeof *new);
-        if(new == NULL) goto filter_error;
+        nbt_node* new_node = nbt_filter(p->data, predicate, aux);
+        if(new_node == NULL) continue;
 
-        new->data = nbt_filter(p->data, predicate, aux);
+        CHECKED_MALLOC(new_entry, sizeof *new_entry, goto filter_error);
 
-        if(new->data == NULL)
-        {
-            free(new);
-            continue;
-        }
-
-        list_add_tail(&new->entry, &ret->entry);
+        new_entry->data = new_node;
+        list_add_tail(&new_entry->entry, &ret->entry);
     }
 
     return ret;
@@ -927,28 +923,6 @@ filter_error:
     return NULL;
 }
 
-static struct tag_list* filter_list_inplace(struct tag_list* list, nbt_predicate_t filter, void* aux)
-{
-    struct list_head* pos;
-    struct list_head* n;
-
-    list_for_each_safe(pos, n, &list->entry)
-    {
-        struct tag_list* cur = list_entry(pos, struct tag_list, entry);
-
-        cur->data = nbt_filter_inplace(cur->data, filter, aux);
-
-        /* If there are no more elements in this node, free it. */
-        if(cur->data == NULL)
-        {
-            list_del(pos);
-            free(cur);
-        }
-    }
-
-    return list;
-}
-
 nbt_node* nbt_filter_inplace(nbt_node* tree, nbt_predicate_t filter, void* aux)
 {
     if(tree == NULL) return NULL;
@@ -959,7 +933,23 @@ nbt_node* nbt_filter_inplace(nbt_node* tree, nbt_predicate_t filter, void* aux)
         return nbt_free(tree), NULL;
 
     if(tree->type == TAG_LIST || tree->type == TAG_COMPOUND)
-        tree->payload.tag_list = filter_list_inplace(tree->payload.tag_list, filter, aux);
+    {
+        struct list_head* pos;
+        struct list_head* n;
+
+        list_for_each_safe(pos, n, &tree->payload.tag_list->entry)
+        {
+            struct tag_list* cur = list_entry(pos, struct tag_list, entry);
+
+            cur->data = nbt_filter_inplace(cur->data, filter, aux);
+
+            if(cur->data == NULL)
+            {
+                list_del(pos);
+                free(cur);
+            }
+        }
+    }
 
     return tree;
 }

@@ -5,8 +5,10 @@ not trying to prevent users to shoot their own feet.
 Currently implemented features:
 
  * Complete parsing of NBT files
- * Basic modifications (Add a tag to a compound, values to a list or byte array)
+ * Basic tree-manipulation functions
  * Pretty printing with indentation
  * Writing (possibly modified) NBT structures back to a compressed file
+ * Full error reporting and graceful recovery from corrupt files and trees.
 
-It depends on libz for gzip decompressing and compressing.
+It depends on libz for gzip decompressing and compressing, and either c99 or
+gnu89 support. c89 is just way too restricting.

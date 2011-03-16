@@ -61,7 +61,7 @@ typedef enum {
  * access the union member it signifies. tag_compound and tag_list contain
  * recursive nbt_node entries, so those will have to be switched on too. I
  * recommended being VERY comfortable with recursion before traversing this
- * beast.
+ * beast, or at least sticking to the library routines provided.
  */
 typedef struct nbt_node {
     nbt_type type;
