@@ -159,7 +159,7 @@ int main(int argc, char **argv)
 
                         if (opt_time < 0)
                             opt_time = 24000 - abs(opt_time);
-                    }                    
+                    }
                 }
                 else
                     opt_time = SHOW;
@@ -173,7 +173,7 @@ int main(int argc, char **argv)
 
                 break;
         }
-    }   
+    }
 
     if (opt_verbose)
     {

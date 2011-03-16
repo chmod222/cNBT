@@ -105,6 +105,8 @@ static void free_list(struct tag_list* list)
 
 void nbt_free(nbt_node* tree)
 {
+    if(tree == NULL) return;
+
     if(tree->type == TAG_LIST || tree->type == TAG_COMPOUND)
         free_list(tree->payload.tag_list);
 
@@ -365,6 +367,8 @@ nbt_node* nbt_parse(const void* mem, size_t len)
     uint8_t type;
     char* name = NULL;
 
+    nbt_node* ret = NULL;
+
     errno = NBT_OK;
 
     READ_GENERIC(&type, sizeof type, memscan, goto parse_error);
@@ -372,7 +376,12 @@ nbt_node* nbt_parse(const void* mem, size_t len)
     name = read_string(memory, length);
     if(name == NULL) goto parse_error;
 
-    return parse_unnamed_tag((nbt_type)type, name, memory, length);
+    ret = parse_unnamed_tag((nbt_type)type, name, memory, length);
+
+    if(errno != NBT_OK)
+        goto parse_error;
+
+    return ret;
 
 parse_error:
     if(errno == NBT_OK)
@@ -382,15 +391,56 @@ parse_error:
     return NULL;
 }
 
+typedef struct {
+    char*  d; /*  data  */
+    size_t l; /* length */
+} buffer_t;
+
+/* parses the whole file into a buffer */
+static buffer_t __parse_file(gzFile fp)
+{
+    buffer_t ret = { NULL, 0 };
+    size_t bytes_read;
+    int err;
+
+    for(;;)
+    {
+        { /* resize buffer */
+            char* temp = realloc(ret.d, ret.l + 4096);
+            if(temp == NULL) goto parse_error;
+            ret.d = temp;
+        }
+
+        /* copy in */
+        bytes_read = gzread(fp, ret.d + ret.l, 4096);
+
+        gzerror(fp, &err);
+        if(err) { errno = NBT_EGZ; goto parse_error; }
+
+        if(bytes_read == 0) break;
+
+        /* fix ret.l */
+        ret.l += bytes_read;
+    }
+
+    return ret;
+
+parse_error:
+    if(errno == NBT_OK)
+        errno = NBT_EMEM;
+
+    free(ret.d);
+    return ret;
+}
+
 /*
  * No incremental parsing goes on. We just dump the whole decompressed file into
  * memory then pass the job off to nbt_parse.
  */
 nbt_node* nbt_parse_file(FILE* fp)
 {
-    char* buf = NULL;
-    size_t len = 4096;
-    nbt_node* ret = NULL;
+    nbt_node* ret;
+    buffer_t buf;
 
     gzFile f = gzdopen(fileno(fp), "rb");
 
@@ -400,39 +450,21 @@ nbt_node* nbt_parse_file(FILE* fp)
         return NULL;
     }
 
-    for(;;)
-    {
-        size_t bytes_read;
-        char* temp = realloc(buf, len * 2);
+    buf = __parse_file(f);
 
-        if(temp)
-            buf = temp;
-        else
-        {
-            errno = NBT_EMEM;
-            free(buf);
-            gzclose(f); /* No need to error check. */
-            return NULL;
-        }
-
-        bytes_read = gzread(f, buf + len, len);
-        len += bytes_read;
-
-        if(bytes_read == 0)
-            break;
-    }
-
-    ret = nbt_parse(buf, len);
-    free(buf);
+    if(buf.d == NULL) /* errno was set by __parse_file */
+        return NULL;
 
     if(gzclose(f) != Z_OK)
     {
-        if(errno == NBT_OK)
-            errno = NBT_EGZ;
-
-        nbt_free(ret);
+        errno = NBT_EGZ;
+        free(buf.d);
         return NULL;
     }
+
+    ret = nbt_parse(buf.d, buf.l);
+
+    free(buf.d);
 
     return ret;
 }
@@ -529,6 +561,8 @@ static nbt_status __nbt_dump_ascii(const nbt_node* tree, FILE* fp, size_t ident)
 
 nbt_status nbt_dump_ascii(const nbt_node* tree, FILE* fp)
 {
+    if(tree == 0) return NBT_ERR;
+
     return __nbt_dump_ascii(tree, fp, 0);
 }
 
@@ -713,7 +747,12 @@ static nbt_status __dump_binary(const nbt_node* tree, gzFile fp)
 
 nbt_status nbt_dump_binary(const nbt_node* tree, FILE* fp)
 {
-    gzFile f = gzdopen(fileno(fp), "wb");
+    gzFile f;
+
+    if(tree == NULL)
+        return NBT_ERR;
+
+    f = gzdopen(fileno(fp), "wb");
     nbt_status r = __dump_binary(tree, f);
     gzclose(f);
 

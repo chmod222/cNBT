@@ -7,17 +7,18 @@
  * -----------------------------------------------------------------------------
  */
 
+#include "nbt.h"
+
+#include <assert.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include <getopt.h>
-
-#include "nbt.h"
 
 static int opt_dupe = 0;
 
-void dump_nbt(char *filename);
+void dump_nbt(const char *filename);
 
 int main(int argc, char **argv)
 {
@@ -66,39 +67,23 @@ int main(int argc, char **argv)
         /* There is more in argv */
 
         if (opt_dump)
-            dump_nbt(argv[optind]); 
+            dump_nbt(argv[optind]);
     }
-
 
     return 0;
 }
 
-void dump_nbt(char *filename)
+void dump_nbt(const char *filename)
 {
-    int i;
-    nbt_file *nbt = NULL;
-    nbt_tag *ba;
-    nbt_tag *p;
-    nbt_list *l;
+    assert(errno == NBT_OK);
 
-    /* Enough parameters given? */
-    if (nbt_init(&nbt) != NBT_OK)
-    {
-        fprintf(stderr, "NBT_Init(): Failure initializing\n");
+    nbt_node* root = nbt_parse_file(fopen(filename, "rb"));
 
-        return;
-    }
+    if(errno != NBT_OK)
+        fprintf(stderr, "Parsing error!\n");
 
-    /* Try parsing */
-    if (nbt_parse(nbt, filename) != NBT_OK)
-    {
-        fprintf(stderr, "NBT_Parse(): Error\n");
+    if(nbt_dump_ascii(root, stdout) != NBT_OK)
+        fprintf(stderr, "Printing error!\n");
 
-        return;
-    }
-
-    nbt_print_tag(nbt->root, 0);
-    nbt_free(nbt);
-
-    return;
+    nbt_free(root);
 }
