@@ -54,7 +54,7 @@ static inline void list_del(struct list_head* loc)
 #define list_for_each_reverse(pos, head) \
     for((pos) = (head)->blink;           \
         (pos) != (head);                 \
-        (pos) = (pos)->blink;
+        (pos) = (pos)->blink)
 
 /*
  * Iterates over a list, where `pos' represents the current element, `n'
