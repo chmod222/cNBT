@@ -130,8 +130,8 @@ nbt_node* nbt_parse_file(FILE* fp);
  * If an error occurs, the function will return the appropriate nbt_status.
  * Please check your damn error codes.
  */
-nbt_status nbt_dump_ascii(nbt_node* tree, FILE* fp);
-nbt_status nbt_dump_binary(nbt_node* tree, FILE* fp);
+nbt_status nbt_dump_ascii(const nbt_node* tree, FILE* fp);
+nbt_status nbt_dump_binary(const nbt_node* tree, FILE* fp);
 
 /*
  * Clones an existing tree. Returns NULL on memory errors.
@@ -194,7 +194,7 @@ nbt_node* nbt_filter_inplace(nbt_node* tree, nbt_predicate_t, void* aux);
 nbt_node* nbt_find(nbt_node* tree, nbt_predicate_t, void* aux);
 
 /* Returns the number of nodes in the tree. */
-size_t nbt_size(nbt_node* tree);
+size_t nbt_size(const nbt_node* tree);
 
 /*
  * Converts a type to a print-friendly string. The string is statically

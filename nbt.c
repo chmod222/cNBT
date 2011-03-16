@@ -436,14 +436,197 @@ nbt_node* nbt_parse_file(FILE* fp)
     return ret;
 }
 
-nbt_status nbt_dump_ascii(nbt_node* tree, FILE* fp)
+nbt_status nbt_dump_ascii(const nbt_node* tree, FILE* fp)
 {
     return NBT_OK; /* TODO */
 }
 
-nbt_status nbt_dump_binary(nbt_node* tree, FILE* fp)
+static nbt_status dump_byte_array_binary(const struct nbt_byte_array ba, gzFile fp)
 {
-    return NBT_OK; /* TODO */
+    int32_t dumped_length = ba.length;
+
+    ne2be(&dumped_length, sizeof dumped_length);
+
+    if(gzwrite(fp, &dumped_length, sizeof dumped_length) == 0)
+        return NBT_EGZ;
+
+    if(ba.length) assert(ba.data);
+
+    if(gzwrite(fp, ba.data, ba.length) == 0)
+        return NBT_EGZ;
+
+    return NBT_OK;
+}
+
+static nbt_status dump_string_binary(const char* name, gzFile fp)
+{
+    size_t len;
+
+    assert(name);
+
+    len = strlen(name);
+
+    if(len > 32767 /* SHORT_MAX */)
+        return NBT_ERR;
+
+    { /* dump the length */
+        int16_t dumped_len = (int16_t)len;
+        ne2be(&dumped_len, sizeof dumped_len);
+
+        if(gzwrite(fp, &dumped_len, sizeof dumped_len) == 0)
+            return NBT_EGZ;
+    }
+
+    if(gzwrite(fp, name, len) == 0)
+        return NBT_EGZ;
+
+    return NBT_OK;
+}
+
+/* Is the list all one type? If yes, return a nonzero tag_type. */
+static nbt_type list_is_homogenous(const struct tag_list* list)
+{
+    const struct list_head* pos;
+    nbt_type type = 0;
+
+    list_for_each(pos, &list->entry)
+    {
+        const struct tag_list* cur = list_entry(pos, const struct tag_list, entry);
+
+        assert(cur->data->type);
+        if(cur->data->type == 0)
+            return 0; /* Invalid type. */
+
+        if(type == 0) type = cur->data->type;
+
+        if(type != cur->data->type)
+            return 0;
+    }
+
+    return type;
+}
+
+static nbt_status __dump_binary(const nbt_node*, gzFile);
+
+static nbt_status dump_list_binary(const struct tag_list* list, gzFile fp)
+{
+    size_t len;
+    nbt_type type;
+    const struct list_head* pos;
+
+    len = list_length(&list->entry);
+
+    if(len == 0) /* empty lists can just be silently ignored */
+        return NBT_OK;
+
+    if(len > 2147483647 /* INT_MAX */)
+        return NBT_ERR;
+
+    assert(list_is_homogenous(list));
+    if((type = list_is_homogenous(list)) == 0)
+        return NBT_ERR;
+
+    if(gzwrite(fp, &type, 1) == 0)
+        return NBT_EGZ;
+
+    {
+        int32_t dumped_len = (int32_t)len;
+        ne2be(&dumped_len, sizeof dumped_len);
+        if(gzwrite(fp, &dumped_len, sizeof dumped_len) == 0)
+            return NBT_EGZ;
+    }
+
+    list_for_each(pos, &list->entry)
+    {
+        const struct tag_list* entry = list_entry(pos, const struct tag_list, entry);
+        nbt_status ret;
+
+        if((ret = __dump_binary(entry->data, fp)) != NBT_OK)
+            return ret;
+    }
+
+    return NBT_OK;
+}
+
+static nbt_status dump_compound_binary(const struct tag_list* list, gzFile fp)
+{
+    const struct list_head* pos;
+    uint8_t zero = 0;
+
+    if(list_empty(&list->entry)) /* empty lists can just be silently ignored */
+        return NBT_OK;
+
+    list_for_each(pos, &list->entry)
+    {
+        const struct tag_list* entry = list_entry(pos, const struct tag_list, entry);
+        nbt_status ret;
+
+        if((ret = __dump_binary(entry->data, fp)) != NBT_OK)
+            return ret;
+    }
+
+    /* write out TAG_End */
+    if(gzwrite(fp, &zero, 1) == 0)
+        return NBT_EGZ;
+
+    return NBT_OK;
+}
+
+static nbt_status __dump_binary(const nbt_node* tree, gzFile fp)
+{
+    int8_t type = (int8_t)tree->type;
+    nbt_status err;
+
+    if(gzwrite(fp, &type, 1) == 0)
+        return NBT_EGZ;
+
+    if(tree->name)
+        if((err = dump_string_binary(tree->name, fp)) != NBT_OK)
+            return err;
+
+#define DUMP_NUM(type, x) do {               \
+    type temp = x;                           \
+    ne2be(&temp, sizeof temp);               \
+    if(gzwrite(fp, &temp, sizeof temp) == 0) \
+        return NBT_EGZ;                      \
+} while(0)
+
+    if(tree->type == TAG_BYTE)
+        DUMP_NUM(int8_t, tree->payload.tag_byte);
+    else if(tree->type == TAG_SHORT)
+        DUMP_NUM(int16_t, tree->payload.tag_short);
+    else if(tree->type == TAG_INT)
+        DUMP_NUM(int32_t, tree->payload.tag_int);
+    else if(tree->type == TAG_LONG)
+        DUMP_NUM(int64_t, tree->payload.tag_long);
+    else if(tree->type == TAG_FLOAT)
+        DUMP_NUM(float, tree->payload.tag_float);
+    else if(tree->type == TAG_DOUBLE)
+        DUMP_NUM(double, tree->payload.tag_double);
+    else if(tree->type == TAG_BYTE_ARRAY)
+        return dump_byte_array_binary(tree->payload.tag_byte_array, fp);
+    else if(tree->type == TAG_STRING)
+        return dump_string_binary(tree->payload.tag_string, fp);
+    else if(tree->type == TAG_LIST)
+        return dump_list_binary(tree->payload.tag_list, fp);
+    else if(tree->type == TAG_COMPOUND)
+        return dump_compound_binary(tree->payload.tag_compound, fp);
+
+    else
+        return NBT_ERR;
+
+#undef DUMP_NUM
+
+    return NBT_OK;
+}
+
+nbt_status nbt_dump_binary(const nbt_node* tree, FILE* fp)
+{
+    gzFile f = gzdopen(fileno(fp), "wb");
+    nbt_status r = __dump_binary(tree, f);
+    gzclose(f);
+
+    return r;
 }
 
 static struct tag_list* clone_list(struct tag_list* list)
@@ -671,24 +854,25 @@ nbt_node* nbt_find(nbt_node* tree, nbt_predicate_t predicate, void* aux)
     return NULL;
 }
 
-static size_t list_length(struct tag_list* list)
+/* Gets the length of the list, plus the length of all its children. */
+static size_t nbt_full_list_length(struct tag_list* list)
 {
     struct list_head* pos;
     size_t accum = 0;
 
     list_for_each(pos, &list->entry)
-        accum++;
+        accum += 1 + nbt_size(list_entry(pos, const struct tag_list, entry)->data);
 
     return accum;
 }
 
-size_t nbt_size(nbt_node* tree)
+size_t nbt_size(const nbt_node* tree)
 {
     if(tree == NULL)
         return 0;
 
     if(tree->type == TAG_LIST || tree->type == TAG_COMPOUND)
-        return list_length(tree->payload.tag_list) + 1;
+        return nbt_full_list_length(tree->payload.tag_list) + 1;
 
     return 1;
 }

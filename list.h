@@ -1,6 +1,8 @@
 #ifndef __LIST_H
 #define __LIST_H
 
+#include <stddef.h>
+
 /* This file is from Linux Kernel (include/linux/list.h) 
  * and modified by simply removing hardware prefetching of list items.
  * Here by copyright, credits attributed to wherever they belong.
@@ -134,7 +136,7 @@ static inline void list_move_tail(struct list_head *list,
  * list_empty - tests whether a list is empty
  * @head: the list to test.
  */
-static inline int list_empty(struct list_head *head)
+static inline int list_empty(const struct list_head *head)
 {
 	return head->next == head;
 }
@@ -215,5 +217,16 @@ static inline void list_splice_init(struct list_head *list,
 #define list_for_each_safe(pos, n, head) \
 	for (pos = (head)->next, n = pos->next; pos != (head); \
 		pos = n, n = pos->next)
+
+static inline size_t list_length(const struct list_head* head)
+{
+    const struct list_head* pos;
+    size_t accum = 0;
+
+    list_for_each(pos, head)
+        accum++;
+
+    return accum;
+}
 
 #endif
