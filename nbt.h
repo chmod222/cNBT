@@ -18,6 +18,8 @@ extern "C" {
 #include <stdint.h>
 #include <stdio.h> /* for FILE* */
 
+#include "list.h" /* For struct list_entry etc. */
+
 /* I wish I could just use stdbool.h :( */
 #ifndef bool
 #define bool int
@@ -88,10 +90,14 @@ typedef struct nbt_node {
          * the first one. By using a linked list, the context of the node is
          * irrelevant. One tradeoff of this design is that we don't get tight
          * list packing when memory is a concern and huge lists are created.
+         *
+         * For more information on using the linked list, see `list.h'. It was
+         * ripped wholesale from the linux kernel, so feel free to see driver
+         * source code for usage information.
          */
         struct tag_list {
             struct nbt_node* data; /* A single node's data. */
-            struct tag_list* next; /* singly linked list, ends with NULL */
+            struct list_head entry;
         } *tag_list, /* The only difference between a list and a compound is its name */
           *tag_compound;
 
@@ -167,7 +173,7 @@ bool nbt_map(nbt_node* tree, nbt_visitor_t, void* aux);
 /*
  * Returns a new tree, consisting of a copy of all the nodes the predicate
  * returned `true' for. If the new tree is empty, this function will return
- * NULL.
+ * NULL. If an out of memory error occured, errno will be set to NBT_EMEM.
  */
 nbt_node* nbt_filter(const nbt_node* tree, nbt_predicate_t, void* aux);
 
