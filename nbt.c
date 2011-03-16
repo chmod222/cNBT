@@ -56,7 +56,7 @@ static void* be2ne(void* s, size_t len)
         return s;
 }
 
-/* native endian to big endian. works the exact same as its reverse */
+/* native endian to big endian. works the exact same as its inverse */
 #define ne2be be2ne
 
 /* A special form of memcpy which copies `n' bytes into `dest', then returns
@@ -986,7 +986,7 @@ static size_t nbt_full_list_length(struct tag_list* list)
     size_t accum = 0;
 
     list_for_each(pos, &list->entry)
-        accum += 1 + nbt_size(list_entry(pos, const struct tag_list, entry)->data);
+        accum += nbt_size(list_entry(pos, const struct tag_list, entry)->data);
 
     return accum;
 }
