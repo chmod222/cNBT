@@ -113,6 +113,9 @@ void nbt_free(nbt_node* tree)
     if(tree->type == TAG_BYTE_ARRAY)
         free(tree->payload.tag_byte_array.data);
 
+    if(tree->type == TAG_STRING)
+        free(tree->payload.tag_string);
+
     free(tree->name);
     free(tree);
 }
