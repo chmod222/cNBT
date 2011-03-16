@@ -752,8 +752,7 @@ nbt_status nbt_dump_binary(const nbt_node* tree, FILE* fp)
 {
     gzFile f;
 
-    if(tree == NULL)
-        return NBT_ERR;
+    if(tree == NULL) return NBT_OK;
 
     f = gzdopen(fileno(fp), "wb");
     nbt_status r = __dump_binary(tree, f);
