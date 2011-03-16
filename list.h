@@ -19,6 +19,10 @@
  * list_entry(ptr, type, member)
  */
 
+/*
+ * Represents a single entry in the list. This must be embedded in your linked
+ * structure.
+ */
 struct list_head {
     struct list_head *blink, /* back  link */
                      *flink; /* front link */
@@ -27,6 +31,7 @@ struct list_head {
 /* The first element is a sentinel. Don't access it. */
 #define INIT_LIST_HEAD(head) (head)->flink = (head)->blink = (head)
 
+/* Adds a new element to the end of a list */
 static inline void list_add_tail(struct list_head* new, struct list_head* head)
 {
     /* new goes between head->blink and head */
@@ -37,6 +42,7 @@ static inline void list_add_tail(struct list_head* new, struct list_head* head)
     head->blink = new;
 }
 
+/* Deletes an element from a list. NOTE: This does not free any memory. */
 static inline void list_del(struct list_head* loc)
 {
     loc->blink->flink = loc->flink;
@@ -44,21 +50,51 @@ static inline void list_del(struct list_head* loc)
     loc->blink = loc->flink = NULL;
 }
 
+/* Tests if the list is empty */
 #define list_empty(head) ((head)->flink == (head))
 
+/* Gets a pointer to the overall structure from the list member */
 #define list_entry(ptr, type, member) \
     ((type*)((char*)(ptr) - offsetof(type, member)))
 
+/*
+ * Iterates over all the elements forward. If you modify the list (such as by
+ * deleting an element), you should use list_for_each_safe instead.
+ */
 #define list_for_each(pos, head) \
     for((pos) = (head)->flink;   \
         (pos) != (head);         \
         (pos) = (pos)->flink)
 
+/* The same as list_for_each, except it traverses the list backwards. */
+#define list_for_each_reverse(pos, head) \
+    for((pos) = (head)->blink;           \
+        (pos) != (head);                 \
+        (pos) = (pos)->blink;
+
+/*
+ * Iterates over a list, where `pos' represents the current element, `n'
+ * represents temporary storage for the next element, and `head' is the start of
+ * the list.
+ *
+ * As opposed to list_for_each, it is safe to remove `pos' from the list.
+ */
 #define list_for_each_safe(pos, n, head)           \
     for((pos) = (head)->flink, (n) = (pos)->flink; \
         (pos) != (head);                           \
         (pos) = (n), (n) = (pos)->flink)
 
+/* The same as list_for_each_safe, except it traverses the list backwards. */
+#define list_for_each_reverse_safe(pos, p, head)   \
+    for((pos) = (head)->blink, (p) = (pos)->blink; \
+        (pos) != (head);                           \
+        (pos) = (p), (p) = (pos)->blink)
+
+/*
+ * Returns the length of a list. WARNING: Unlike every other function, this runs
+ * in O(n). Avoid using it as much as possible, as you will have to walk the
+ * whole list.
+ */
 static inline size_t list_length(const struct list_head* head)
 {
     const struct list_head* cursor;
