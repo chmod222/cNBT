@@ -539,20 +539,28 @@ static inline nbt_status __nbt_dump_ascii(const nbt_node* tree, FILE* fp, size_t
     }
     else if(tree->type == TAG_LIST)
     {
-        fprintf(fp, "TAG_List(\"%s\")\n{\n", SAFE_NAME(tree));
+        fprintf(fp, "TAG_List(\"%s\")\n", SAFE_NAME(tree));
+        indent(fp, ident);
+        fprintf(fp, "{\n");
 
         nbt_status err;
         if((err = dump_list_contents_ascii(tree->payload.tag_list, fp, ident + 1)) != NBT_OK)
             return err;
+
+        indent(fp, ident);
         fprintf(fp, "}\n");
     }
     else if(tree->type == TAG_COMPOUND)
     {
-        fprintf(fp, "TAG_Compound(\"%s\")\n{\n", SAFE_NAME(tree));
+        fprintf(fp, "TAG_Compound(\"%s\")\n", SAFE_NAME(tree));
+        indent(fp, ident);
+        fprintf(fp, "{\n");
 
         nbt_status err;
         if((err = dump_list_contents_ascii(tree->payload.tag_compound, fp, ident + 1)) != NBT_OK)
             return err;
+
+        indent(fp, ident);
         fprintf(fp, "}\n");
     }
 
