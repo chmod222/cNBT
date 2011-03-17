@@ -10,5 +10,5 @@ Currently implemented features:
  * Writing (possibly modified) NBT structures back to a compressed file
  * Full error reporting and graceful recovery from corrupt files and trees.
 
-It depends on libz for gzip decompressing and compressing, and either c99 or
-gnu89 support. c89 is just way too restricting.
+It depends on libz for gzip decompressing and compressing, and compiler C99
+support.
