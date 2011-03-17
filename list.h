@@ -15,23 +15,36 @@ struct list_head {
 /* The first element is a sentinel. Don't access it. */
 #define INIT_LIST_HEAD(head) (head)->flink = (head)->blink = (head)
 
-/* Adds a new element to the end of a list */
-static inline void list_add_tail(struct list_head* new, struct list_head* head)
+/* Adds a new element to the beginning of a list */
+static inline void list_add_head(struct list_head* restrict new,
+                                 struct list_head* restrict head)
 {
-    /* new goes between head->blink and head */
+    new->flink = head->flink;
+    new->blink = head;
+
+    new->flink->blink = new;
+    new->blink->flink = new;
+}
+
+/* Adds a new element to the end of a list */
+static inline void list_add_tail(struct list_head* restrict new,
+                                 struct list_head* restrict head)
+{
     new->flink = head;
     new->blink = head->blink;
 
-    head->blink->flink = new;
-    head->blink = new;
+    new->flink->blink = new;
+    new->blink->flink = new;
 }
 
 /* Deletes an element from a list. NOTE: This does not free any memory. */
 static inline void list_del(struct list_head* loc)
 {
-    loc->blink->flink = loc->flink;
     loc->flink->blink = loc->blink;
-    loc->blink = loc->flink = NULL;
+    loc->blink->flink = loc->flink;
+
+    loc->flink = NULL;
+    loc->blink = NULL;
 }
 
 /* Tests if the list is empty */
