@@ -140,6 +140,11 @@ nbt_node* nbt_clone(nbt_node*);
  */
 void nbt_free(nbt_node*);
 
+/*
+ * Recursively frees all the elements of a list, and then frees the list itself.
+ */
+void nbt_free_list(struct tag_list*);
+
 /* Utility functions. */
 
 /*
@@ -200,6 +205,12 @@ size_t nbt_size(const nbt_node* tree);
  * allocated, and therefore does not have to be freed by the user.
 */
 const char* nbt_type_to_string(nbt_type);
+
+/*
+ * Converts an error code into a print-friendly string. The string is statically
+ * allocated, and therefore does not have to be freed by the user.
+ */
+const char* nbt_error_to_string(nbt_status);
 
 /* TODO: More utilities as requests are made and patches contributed. */
 

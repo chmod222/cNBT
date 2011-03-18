@@ -1,8 +1,9 @@
 # -----------------------------------------------------------------------------
 # "THE BEER-WARE LICENSE" (Revision 42):
-# <webmaster@flippeh.de> wrote this file. As long as you retain this notice you
-# can do whatever you want with this stuff. If we meet some day, and you think
-# this stuff is worth it, you can buy me a beer in return. Lukas Niederbremer.
+# Lukas Niederbremer <webmaster@flippeh.de> and Clark Gaebel <cg.wowus.cg@gmail.com>
+# wrote this file. As long as you retain this notice you can do whatever you
+# want with this stuff. If we meet some day, and you think this stuff is worth
+# it, you can buy us a beer in return.
 # -----------------------------------------------------------------------------
 
 CFLAGS=-g -Wall -Wextra -std=c99 -pedantic -Wno-implicit-function-declaration
@@ -17,7 +18,10 @@ check: check.c libnbt.a
 
 main.o: main.c
 
-libnbt.a: nbt.o
-	ar -rcs libnbt.a nbt.o
+libnbt.a: nbt_parsing.o nbt_treeops.o nbt_util.o
+	ar -rcs libnbt.a nbt_parsing.o nbt_treeops.o nbt_util.o
 
 nbt.o: nbt.h nbt.c
+nbt_parsing.o: nbt_parsing.c
+nbt_treeops.o: nbt_treeops.c
+nbt_util.o: nbt_util.c
