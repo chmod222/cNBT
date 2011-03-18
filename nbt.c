@@ -18,7 +18,7 @@
 #include <string.h>
 #include <zlib.h>
 
-/* works around a bug in clang. */
+/* works around a bug in clang */
 char* strdup(const char*);
 
 /* works around a bug in icc */
@@ -179,10 +179,7 @@ static inline struct nbt_byte_array read_byte_array(const char** memory, size_t*
 
     if(ret.length < 0) goto parse_error;
 
-    CHECKED_MALLOC(ret.data, ret.length,
-        errno = NBT_EMEM;
-        goto parse_error;
-    );
+    CHECKED_MALLOC(ret.data, ret.length, goto parse_error);
 
     READ_GENERIC(ret.data, (size_t)ret.length, memscan, goto parse_error);
 
