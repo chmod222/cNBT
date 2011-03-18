@@ -86,12 +86,9 @@ static inline const void* swapped_memscan(void* dest, const void* src, size_t n)
     }                                         \
 } while(0)
 
-#define CHECKED_GZWRITE(fp, ptr, len, on_error) do { \
-    if(gzwrite((fp), (ptr), (len)) != (int)(len))    \
-    {                                                \
-        errno = NBT_EGZ;                             \
-        on_error;                                    \
-    }                                                \
+#define CHECKED_GZWRITE(fp, ptr, len) do {        \
+    if(gzwrite((fp), (ptr), (len)) != (int)(len)) \
+        return NBT_EGZ;                           \
 } while(0)
 
 /* Parses a tag, given a name (may be NULL) and a type. Fills in the payload. */
@@ -595,13 +592,11 @@ static nbt_status dump_byte_array_binary(const struct nbt_byte_array ba, gzFile 
 
     ne2be(&dumped_length, sizeof dumped_length);
 
-    CHECKED_GZWRITE(fp, &dumped_length, sizeof dumped_length,
-        return NBT_EGZ);
+    CHECKED_GZWRITE(fp, &dumped_length, sizeof dumped_length);
 
     if(ba.length) assert(ba.data);
 
-    CHECKED_GZWRITE(fp, ba.data, ba.length,
-        return NBT_EGZ);
+    CHECKED_GZWRITE(fp, ba.data, ba.length);
 
     return NBT_OK;
 }
@@ -619,12 +614,10 @@ static nbt_status dump_string_binary(const char* name, gzFile fp)
         int16_t dumped_len = (int16_t)len;
         ne2be(&dumped_len, sizeof dumped_len);
 
-        CHECKED_GZWRITE(fp, &dumped_len, sizeof dumped_len,
-            return NBT_EGZ);
+        CHECKED_GZWRITE(fp, &dumped_len, sizeof dumped_len);
     }
 
-    CHECKED_GZWRITE(fp, name, len,
-        return NBT_EGZ);
+    CHECKED_GZWRITE(fp, name, len);
 
     return NBT_OK;
 }
@@ -678,15 +671,13 @@ static nbt_status dump_list_binary(const struct tag_list* list, gzFile fp)
     {
         int8_t _type = (int8_t)type;
         ne2be(&_type, sizeof _type); /* unnecessary, but left in to keep similar code looking similar */
-        CHECKED_GZWRITE(fp, &_type, sizeof _type,
-            return NBT_EGZ);
+        CHECKED_GZWRITE(fp, &_type, sizeof _type);
     }
 
     {
         int32_t dumped_len = (int32_t)len;
         ne2be(&dumped_len, sizeof dumped_len);
-        CHECKED_GZWRITE(fp, &dumped_len, sizeof dumped_len,
-            return NBT_EGZ);
+        CHECKED_GZWRITE(fp, &dumped_len, sizeof dumped_len);
     }
 
     const struct list_head* pos;
@@ -719,8 +710,7 @@ static nbt_status dump_compound_binary(const struct tag_list* list, gzFile fp)
 
     /* write out TAG_End */
     uint8_t zero = 0;
-    CHECKED_GZWRITE(fp, &zero, sizeof zero,
-        return NBT_EGZ);
+    CHECKED_GZWRITE(fp, &zero, sizeof zero);
 
     return NBT_OK;
 }
@@ -736,8 +726,7 @@ static inline nbt_status __dump_binary(const nbt_node* tree, bool dump_type, gzF
     { /* write out the type */
         int8_t type = (int8_t)tree->type;
 
-        CHECKED_GZWRITE(fp, &type, sizeof type,
-            return NBT_EGZ);
+        CHECKED_GZWRITE(fp, &type, sizeof type);
     }
 
     if(tree->name)
@@ -751,8 +740,7 @@ static inline nbt_status __dump_binary(const nbt_node* tree, bool dump_type, gzF
 #define DUMP_NUM(type, x) do {               \
     type temp = x;                           \
     ne2be(&temp, sizeof temp);               \
-    CHECKED_GZWRITE(fp, &temp, sizeof temp,  \
-        return NBT_EGZ);                     \
+    CHECKED_GZWRITE(fp, &temp, sizeof temp); \
 } while(0)
 
     if(tree->type == TAG_BYTE)
