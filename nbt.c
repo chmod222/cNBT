@@ -78,9 +78,20 @@ static inline const void* swapped_memscan(void* dest, const void* src, size_t n)
     return be2ne(dest, n), ret;
 }
 
-#define CHECKED_MALLOC(var, n, on_error) do {       \
-    var = malloc(n);                                \
-    if(var == NULL) { errno = NBT_EMEM; on_error; } \
+#define CHECKED_MALLOC(var, n, on_error) do { \
+    if((var = malloc(n)) == NULL)             \
+    {                                         \
+        errno = NBT_EMEM;                     \
+        on_error;                             \
+    }                                         \
+} while(0)
+
+#define CHECKED_GZWRITE(fp, ptr, len, on_error) do { \
+    if(gzwrite((fp), (ptr), (len)) != (int)(len))    \
+    {                                                \
+        errno = NBT_EGZ;                             \
+        on_error;                                    \
+    }                                                \
 } while(0)
 
 /* Parses a tag, given a name (may be NULL) and a type. Fills in the payload. */
@@ -88,11 +99,10 @@ static nbt_node* parse_unnamed_tag(nbt_type type, char* name, const char** memor
 
 static inline void free_list(struct tag_list* list)
 {
-    if(list == NULL) return;
+    assert(list);
 
     struct list_head* current;
     struct list_head* temp;
-
     list_for_each_safe(current, temp, &list->entry)
     {
         struct tag_list* entry = list_entry(current, struct tag_list, entry);
@@ -113,10 +123,10 @@ void nbt_free(nbt_node* tree)
     if(tree->type == TAG_LIST || tree->type == TAG_COMPOUND)
         free_list(tree->payload.tag_list);
 
-    if(tree->type == TAG_BYTE_ARRAY)
+    else if(tree->type == TAG_BYTE_ARRAY)
         free(tree->payload.tag_byte_array.data);
 
-    if(tree->type == TAG_STRING)
+    else if(tree->type == TAG_STRING)
         free(tree->payload.tag_string);
 
     free(tree);
@@ -419,6 +429,8 @@ parse_error:
         errno = NBT_EMEM;
 
     free(ret.d);
+    ret.d = NULL;
+
     return ret;
 }
 
@@ -429,6 +441,8 @@ parse_error:
 nbt_node* nbt_parse_file(FILE* fp)
 {
     nbt_node* ret;
+
+    errno = NBT_OK;
 
     /*
      * We need to keep these declarations up here as opposed to where they're
@@ -477,8 +491,8 @@ static inline void indent(FILE* fp, size_t amount)
 
 static nbt_status __nbt_dump_ascii(const nbt_node* tree, FILE* fp, size_t ident);
 
-/* prints the node's name, or "" if it has none. */
-#define SAFE_NAME(node) ((node)->name ? (node)->name : "")
+/* prints the node's name, or (null) if it has none. */
+#define SAFE_NAME(node) ((node)->name ? (node)->name : "<null>")
 
 static inline void dump_byte_array(const struct nbt_byte_array ba, FILE* fp)
 {
@@ -581,13 +595,13 @@ static nbt_status dump_byte_array_binary(const struct nbt_byte_array ba, gzFile 
 
     ne2be(&dumped_length, sizeof dumped_length);
 
-    if(gzwrite(fp, &dumped_length, sizeof dumped_length) == 0)
-        return NBT_EGZ;
+    CHECKED_GZWRITE(fp, &dumped_length, sizeof dumped_length,
+        return NBT_EGZ);
 
     if(ba.length) assert(ba.data);
 
-    if(gzwrite(fp, ba.data, ba.length) == 0)
-        return NBT_EGZ;
+    CHECKED_GZWRITE(fp, ba.data, ba.length,
+        return NBT_EGZ);
 
     return NBT_OK;
 }
@@ -605,12 +619,12 @@ static nbt_status dump_string_binary(const char* name, gzFile fp)
         int16_t dumped_len = (int16_t)len;
         ne2be(&dumped_len, sizeof dumped_len);
 
-        if(gzwrite(fp, &dumped_len, sizeof dumped_len) == 0)
-            return NBT_EGZ;
+        CHECKED_GZWRITE(fp, &dumped_len, sizeof dumped_len,
+            return NBT_EGZ);
     }
 
-    if(gzwrite(fp, name, len) == 0)
-        return NBT_EGZ;
+    CHECKED_GZWRITE(fp, name, len,
+        return NBT_EGZ);
 
     return NBT_OK;
 }
@@ -643,7 +657,7 @@ static inline nbt_type list_is_homogenous(const struct tag_list* list)
     return type;
 }
 
-static nbt_status __dump_binary(const nbt_node*, gzFile);
+static nbt_status __dump_binary(const nbt_node*, bool, gzFile);
 
 static nbt_status dump_list_binary(const struct tag_list* list, gzFile fp)
 {
@@ -657,18 +671,22 @@ static nbt_status dump_list_binary(const struct tag_list* list, gzFile fp)
     if(len > 2147483647 /* INT_MAX */)
         return NBT_ERR;
 
-    assert(list_is_homogenous(list));
+    assert(list_is_homogenous(list) != TAG_INVALID);
     if((type = list_is_homogenous(list)) == TAG_INVALID)
         return NBT_ERR;
 
-    if(gzwrite(fp, &type, 1) == 0)
-        return NBT_EGZ;
+    {
+        int8_t _type = (int8_t)type;
+        ne2be(&_type, sizeof _type); /* unnecessary, but left in to keep similar code looking similar */
+        CHECKED_GZWRITE(fp, &_type, sizeof _type,
+            return NBT_EGZ);
+    }
 
     {
         int32_t dumped_len = (int32_t)len;
         ne2be(&dumped_len, sizeof dumped_len);
-        if(gzwrite(fp, &dumped_len, sizeof dumped_len) == 0)
-            return NBT_EGZ;
+        CHECKED_GZWRITE(fp, &dumped_len, sizeof dumped_len,
+            return NBT_EGZ);
     }
 
     const struct list_head* pos;
@@ -677,7 +695,7 @@ static nbt_status dump_list_binary(const struct tag_list* list, gzFile fp)
         const struct tag_list* entry = list_entry(pos, const struct tag_list, entry);
         nbt_status ret;
 
-        if((ret = __dump_binary(entry->data, fp)) != NBT_OK)
+        if((ret = __dump_binary(entry->data, false, fp)) != NBT_OK)
             return ret;
     }
 
@@ -695,25 +713,31 @@ static nbt_status dump_compound_binary(const struct tag_list* list, gzFile fp)
         const struct tag_list* entry = list_entry(pos, const struct tag_list, entry);
         nbt_status ret;
 
-        if((ret = __dump_binary(entry->data, fp)) != NBT_OK)
+        if((ret = __dump_binary(entry->data, true, fp)) != NBT_OK)
             return ret;
     }
 
     /* write out TAG_End */
     uint8_t zero = 0;
-    if(gzwrite(fp, &zero, 1) == 0)
-        return NBT_EGZ;
+    CHECKED_GZWRITE(fp, &zero, sizeof zero,
+        return NBT_EGZ);
 
     return NBT_OK;
 }
 
-static inline nbt_status __dump_binary(const nbt_node* tree, gzFile fp)
+/*
+ * @param dump_type   Should we dump the type, or just skip it? We need to skip
+ *                    when dumping lists, because the list header already says
+ *                    the type.
+ */
+static inline nbt_status __dump_binary(const nbt_node* tree, bool dump_type, gzFile fp)
 {
+    if(dump_type)
     { /* write out the type */
         int8_t type = (int8_t)tree->type;
 
-        if(gzwrite(fp, &type, 1) == 0)
-            return NBT_EGZ;
+        CHECKED_GZWRITE(fp, &type, sizeof type,
+            return NBT_EGZ);
     }
 
     if(tree->name)
@@ -727,8 +751,8 @@ static inline nbt_status __dump_binary(const nbt_node* tree, gzFile fp)
 #define DUMP_NUM(type, x) do {               \
     type temp = x;                           \
     ne2be(&temp, sizeof temp);               \
-    if(gzwrite(fp, &temp, sizeof temp) == 0) \
-        return NBT_EGZ;                      \
+    CHECKED_GZWRITE(fp, &temp, sizeof temp,  \
+        return NBT_EGZ);                     \
 } while(0)
 
     if(tree->type == TAG_BYTE)
@@ -752,6 +776,7 @@ static inline nbt_status __dump_binary(const nbt_node* tree, gzFile fp)
     else if(tree->type == TAG_COMPOUND)
         return dump_compound_binary(tree->payload.tag_compound, fp);
 
+    else
         return NBT_ERR;
 
     return NBT_OK;
@@ -763,8 +788,14 @@ nbt_status nbt_dump_binary(const nbt_node* tree, FILE* fp)
 {
     if(tree == NULL) return NBT_OK;
 
-    gzFile f = gzdopen(fileno(fp), "wb");
-    nbt_status r = __dump_binary(tree, f);
+    int fd = fileno(fp);
+    if(fd == -1) return NBT_EGZ;
+
+    gzFile f = gzdopen(fd, "wb");
+    if(f == Z_NULL) return NBT_EGZ;
+
+    nbt_status r = __dump_binary(tree, true, f);
+
     gzclose(f);
 
     return r;

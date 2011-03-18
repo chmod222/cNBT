@@ -7,19 +7,17 @@
 
 CFLAGS=-g -Wall -Wextra -std=c99 -pedantic -Wno-implicit-function-declaration
 
-all: nbtreader datlevel blockreplacer
+all: nbtreader check
 
 nbtreader: main.o libnbt.a
-	gcc main.o -L. -lnbt -lz -o nbtreader -g
+	$(CC) $(CFLAGS) main.o -L. -lnbt -lz -o nbtreader
 
-datlevel: datlevel.c libnbt.a
-	gcc datlevel.c -L. -lnbt -lz -lm -o datlevel -g -Wall
-
-blockreplacer: blockreplace.c libnbt.a
-	gcc blockreplace.c -L. -lnbt -lz -o blockreplace -g -Wall
+check: check.c libnbt.a
+	$(CC) $(CFLAGS) check.c -L. -lnbt -lz -o check
 
 main.o: main.c
 
 libnbt.a: nbt.o
 	ar -rcs libnbt.a nbt.o
+
 nbt.o: nbt.h nbt.c
