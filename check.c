@@ -137,6 +137,15 @@ int main(int argc, char** argv)
     if((err = nbt_dump_ascii(tree, stdout)) != NBT_OK)
         die_with_err(err);
 
+    {
+        printf("Checking nbt_clone... ");
+        nbt_node* clone = nbt_clone(tree);
+        if(!check_tree_equal(tree, clone))
+            die("FAILED.");
+        nbt_free(clone);
+        printf("OK.\n");
+    }
+
     FILE* temp = fopen("delete_me.nbt", "wb");
     if(temp == NULL) die("Could not open a temporary file.");
 
