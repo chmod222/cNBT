@@ -8,7 +8,7 @@
 
 CFLAGS=-g -Wall -Wextra -std=c99 -pedantic
 
-all: nbtreader check test
+all: nbtreader check
 
 nbtreader: main.o libnbt.a
 	$(CC) $(CFLAGS) main.o -L. -lnbt -lz -o nbtreader
