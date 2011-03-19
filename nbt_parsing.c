@@ -333,6 +333,7 @@ nbt_node* nbt_parse(const void* mem, size_t len)
 
     nbt_node* ret = parse_unnamed_tag((nbt_type)type, name, memory, length);
 
+    /* We can't check for NULL, because it COULD be an empty tree. */
     if(errno != NBT_OK) goto parse_error;
 
     return ret;
