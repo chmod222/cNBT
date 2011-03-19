@@ -14,20 +14,8 @@ static void die(const char* message)
 
 static void die_with_err(int err)
 {
-    if(err == NBT_OK)
-        die("No error.");
-    else if(err == NBT_ERR)
-        die("Parse error.");
-    else if(err == NBT_EMEM)
-        die("Out of memory.");
-    else if(err == NBT_EGZ)
-        die("GZip error.");
-
-    else
-    {
-        fprintf(stderr, "errno: %i\n", err);
-        die("Unknown error.");
-    }
+    fprintf(stderr, "Error %i: %s\n", err, nbt_error_to_string(err));
+    exit(1);
 }
 
 static nbt_node* get_tree(const char* filename)
@@ -99,14 +87,12 @@ bool check_tree_equal(const nbt_node* restrict a, const nbt_node* restrict b)
         return strcmp(a->payload.tag_string, b->payload.tag_string) == 0;
     case TAG_LIST:
     case TAG_COMPOUND:
-        if(list_length(&a->payload.tag_list->entry) != list_length(&b->payload.tag_list->entry))
-            return false;
+    {
+        struct list_head *ai, *bi;
 
-        for(struct list_head* ai = a->payload.tag_list->entry.flink,
-                            * bi = b->payload.tag_list->entry.flink;
-            ai != &a->payload.tag_list->entry;
-            ai = ai->flink,
-            bi = bi->flink)
+        for(ai = a->payload.tag_list->entry.flink, bi = b->payload.tag_list->entry.flink;
+            ai != &a->payload.tag_list->entry &&   bi != &b->payload.tag_list->entry;
+            ai = ai->flink,                        bi = bi->flink)
         {
             struct tag_list* ae = list_entry(ai, struct tag_list, entry);
             struct tag_list* be = list_entry(bi, struct tag_list, entry);
@@ -115,10 +101,16 @@ bool check_tree_equal(const nbt_node* restrict a, const nbt_node* restrict b)
                 return false;
         }
 
+        /* if there are still elements left in either list... */
+        if(ai != &a->payload.tag_list->entry || bi != &b->payload.tag_list->entry)
+            return false;
+
         return true;
 
     default: /* wtf invalid type */
         return false;
+    }
+
     }
 }
 
@@ -130,9 +122,10 @@ int main(int argc, char** argv)
         return 0;
     }
 
+    printf("Getting tree... ");
     nbt_node* tree = get_tree(argv[1]);
+    printf("OK.\n");
 
-    printf("Parsing...\n");
     nbt_status err;
     if((err = nbt_dump_ascii(tree, stdout)) != NBT_OK)
         die_with_err(err);
@@ -141,35 +134,41 @@ int main(int argc, char** argv)
         printf("Checking nbt_clone... ");
         nbt_node* clone = nbt_clone(tree);
         if(!check_tree_equal(tree, clone))
-            die("FAILED.");
-        nbt_free(clone);
+            die("FAILED. Clones not equal.");
+        nbt_free(tree); /* swap the tree out for its clone */
+        tree = clone;
         printf("OK.\n");
     }
 
     FILE* temp = fopen("delete_me.nbt", "wb");
     if(temp == NULL) die("Could not open a temporary file.");
 
-    printf("Dumping binary...\n");
+    printf("Dumping binary... ");
     if((err = nbt_dump_binary(tree, temp)) != NBT_OK)
         die_with_err(err);
+    printf("OK.\n");
 
     fclose(temp);
     temp = fopen("delete_me.nbt", "rb");
     if(temp == NULL) die("Could not re-open a temporary file.");
 
-    printf("Reparsing...\n");
+    printf("Reparsing... ");
     nbt_node* tree_copy = nbt_parse_file(temp);
     if(tree_copy == NULL) die_with_err(errno);
+    printf("OK.\n");
 
-    printf("Checking trees...\n");
+    printf("Checking trees... ");
     if(!check_tree_equal(tree, tree_copy))
     {
-        printf("Reread tree:\n");
+        printf("Other tree:\n");
         if((err = nbt_dump_ascii(tree_copy, stdout)) != NBT_OK)
             die_with_err(err);
 
         die("Trees not equal.");
     }
+    printf("OK.\n");
+
+    printf("Freeing resources... ");
 
     fclose(temp);
 
@@ -177,5 +176,6 @@ int main(int argc, char** argv)
     nbt_free(tree_copy);
 
     printf("OK.\n");
+
     return 0;
 }
