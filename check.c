@@ -122,7 +122,7 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    printf("Getting tree... ");
+    printf("Getting tree from %s... ", argv[1]);
     nbt_node* tree = get_tree(argv[1]);
     printf("OK.\n");
 
@@ -171,6 +171,9 @@ int main(int argc, char** argv)
     printf("Freeing resources... ");
 
     fclose(temp);
+
+    if(remove("delete_me.nbt") == -1)
+        die("Could not delete delete_me.nbt. Race condition?");
 
     nbt_free(tree);
     nbt_free(tree_copy);
