@@ -320,6 +320,25 @@ nbt_node* nbt_find(nbt_node* tree, nbt_predicate_t predicate, void* aux)
     return NULL;
 }
 
+static bool names_are_equal(const nbt_node* node, void* vname)
+{
+    const char* name = vname;
+
+    assert(node);
+
+    if(name == NULL && node->name != NULL)
+        return false;
+    if(name != NULL && node->name == NULL)
+        return false;
+
+    return strcmp(node->name, name) == 0;
+}
+
+nbt_node* nbt_find_by_name(nbt_node* tree, const char* name)
+{
+    return nbt_find(tree, &names_are_equal, (void*)name);
+}
+
 /* Gets the length of the list, plus the length of all its children. */
 static inline size_t nbt_full_list_length(struct tag_list* list)
 {

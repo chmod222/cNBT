@@ -192,10 +192,23 @@ nbt_node* nbt_filter_inplace(nbt_node* tree, nbt_predicate_t, void* aux);
  * nodes are rejected, NULL is returned. If you want to find every instance of
  * something, consider using nbt_map with a visitor that keeps track.
  *
- * Since const-ing `tree' would me const-ing the return value, you'll just have
- * to take my word for it that nbt_find DOES NOT modify the tree.
+ * Since const-ing `tree' would require me const-ing the return value, you'll
+ * just have to take my word for it that nbt_find DOES NOT modify the tree.
+ * Feel free to cast as necessary.
  */
 nbt_node* nbt_find(nbt_node* tree, nbt_predicate_t, void* aux);
+
+/*
+ * Returns the first node with the name `name'. If no node with that name is in
+ * the tree, returns NULL.
+ *
+ * If `name' is NULL, this function will find the first unnamed node.
+ *
+ * Since const-ing `tree' would require me const-ing the return value, you'll
+ * just have to take my word for it that nbt_find DOES NOT modify the tree.
+ * Feel free to cast as necessary.
+ */
+nbt_node* nbt_find_by_name(nbt_node* tree, const char* name);
 
 /* Returns the number of nodes in the tree. */
 size_t nbt_size(const nbt_node* tree);
