@@ -325,7 +325,6 @@ static bool names_are_equal(const nbt_node* node, void* vname)
     const char* name = vname;
 
     assert(node);
-    assert(node->name != name);
 
     /*
      * Just another way of saying that they either have to both be NULL or valid
