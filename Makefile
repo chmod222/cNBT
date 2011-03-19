@@ -17,7 +17,7 @@ check: check.c libnbt.a
 	$(CC) $(CFLAGS) check.c -L. -lnbt -lz -o check
 
 test: check
-	cd testdata && ls -1 | xargs -n1 ../check && rm delete_me.nbt && cd ..
+	cd testdata && ls -1 *.nbt | xargs -n1 ../check && rm delete_me.nbt && cd ..
 
 main.o: main.c
 
