@@ -46,8 +46,6 @@ void nbt_free(nbt_node* tree)
 {
     if(tree == NULL) return;
 
-    free(tree->name);
-
     if(tree->type == TAG_LIST || tree->type == TAG_COMPOUND)
         nbt_free_list(tree->payload.tag_list);
 
@@ -57,6 +55,7 @@ void nbt_free(nbt_node* tree)
     else if(tree->type == TAG_STRING)
         free(tree->payload.tag_string);
 
+    free(tree->name);
     free(tree);
 }
 
@@ -275,25 +274,24 @@ nbt_node* nbt_filter_inplace(nbt_node* tree, nbt_predicate_t filter, void* aux)
 {
     assert(filter);
 
-    if(tree == NULL)       return                 NULL;
-    if(!filter(tree, aux)) return nbt_free(tree), NULL;
+    if(tree == NULL)               return                 NULL;
+    if(!filter(tree, aux))         return nbt_free(tree), NULL;
+    if(tree->type != TAG_LIST &&
+       tree->type != TAG_COMPOUND) return tree;
 
-    if(tree->type == TAG_LIST || tree->type == TAG_COMPOUND)
+    struct list_head* pos;
+    struct list_head* n;
+
+    list_for_each_safe(pos, n, &tree->payload.tag_list->entry)
     {
-        struct list_head* pos;
-        struct list_head* n;
+        struct tag_list* cur = list_entry(pos, struct tag_list, entry);
 
-        list_for_each_safe(pos, n, &tree->payload.tag_list->entry)
+        cur->data = nbt_filter_inplace(cur->data, filter, aux);
+
+        if(cur->data == NULL)
         {
-            struct tag_list* cur = list_entry(pos, struct tag_list, entry);
-
-            cur->data = nbt_filter_inplace(cur->data, filter, aux);
-
-            if(cur->data == NULL)
-            {
-                list_del(pos);
-                free(cur);
-            }
+            list_del(pos);
+            free(cur);
         }
     }
 
@@ -304,8 +302,8 @@ nbt_node* nbt_find(nbt_node* tree, nbt_predicate_t predicate, void* aux)
 {
     if(tree == NULL)                  return NULL;
     if(predicate(tree, aux))          return tree;
-    if(   tree->type != TAG_LIST
-       && tree->type != TAG_COMPOUND) return NULL;
+    if(tree->type != TAG_LIST &&
+       tree->type != TAG_COMPOUND)    return NULL;
 
     struct list_head* pos;
     list_for_each(pos, &tree->payload.tag_list->entry)

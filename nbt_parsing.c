@@ -9,6 +9,8 @@
  */
 #include "nbt.h"
 
+#include "buffer.h"
+
 #include <assert.h>
 #include <errno.h>
 #include <inttypes.h>
@@ -346,47 +348,42 @@ parse_error:
     return NULL;
 }
 
-typedef struct {
-    char*  d; /*  data  */
-    size_t l; /* length */
-} buffer_t;
-
 /* parses the whole file into a buffer */
-static inline buffer_t __parse_file(gzFile fp)
+static inline struct buffer __parse_file(gzFile fp)
 {
-    buffer_t ret = { NULL, 0 };
+    struct buffer ret;
 
-    /* WARNING: This loop runs in O(n^2). TODO: Fix this! */
-    for(;;)
+    char buf[4096];
+    size_t bytes_read;
+
+    if(buffer_init(&ret))
     {
-        { /* resize buffer */
-            char* temp = realloc(ret.d, ret.l + 4096);
-            if(temp == NULL) goto parse_error;
-            ret.d = temp;
-        }
+        errno = NBT_EMEM;
+        return (struct buffer) { NULL, 0, 0 };
+    }
 
-        /* copy in */
-        size_t bytes_read = gzread(fp, ret.d + ret.l, 4096);
-
+    while((bytes_read = gzread(fp, buf, 4096)) > 0)
+    {
         int err;
         gzerror(fp, &err);
-        if(err) { errno = NBT_EGZ; goto parse_error; }
+        if(err)
+        {
+            errno = NBT_EGZ;
+            goto parse_error;
+        }
 
-        if(bytes_read == 0) break;
-
-        /* fix ret.l */
-        ret.l += bytes_read;
+        if(buffer_append(&ret, buf, bytes_read))
+        {
+            errno = NBT_EMEM;
+            goto parse_error;
+        }
     }
 
     return ret;
 
 parse_error:
-    if(errno == NBT_OK)
-        errno = NBT_EMEM;
-
-    free(ret.d);
-    ret.d = NULL;
-
+    buffer_free(&ret);
+    ret.data = NULL;
     return ret;
 }
 
@@ -404,33 +401,29 @@ nbt_node* nbt_parse_file(FILE* fp)
      * We need to keep these declarations up here as opposed to where they're
      * used because they're referenced by the parse_error block.
      */
-    buffer_t buf = { NULL, 0 };
+    struct buffer buf = { NULL, 0, 0 };
     gzFile f = Z_NULL;
 
-    if(fp == NULL) return NULL;
-
-    int fd = fileno(fp);
-    if(fd == -1)    goto parse_error;
-
-    f = gzdopen(fd, "rb");
-    if(f == Z_NULL) goto parse_error;
+                           if(fp == NULL)         goto parse_error;
+    int fd = fileno(fp);   if(fd == -1)           goto parse_error;
+    f = gzdopen(fd, "rb"); if(f == Z_NULL)        goto parse_error;
 
     buf = __parse_file(f);
 
-    if(buf.d == NULL)      goto parse_error;
-    if(gzclose(f) != Z_OK) goto parse_error;
+                           if(buf.data == NULL)   goto parse_error;
+                           if(gzclose(f) != Z_OK) goto parse_error;
 
-    ret = nbt_parse(buf.d, buf.l);
+    ret = nbt_parse(buf.data, buf.len);
 
-    free(buf.d);
 
+    buffer_free(&buf);
     return ret;
 
 parse_error:
     if(errno == NBT_OK)
         errno = NBT_EGZ;
 
-    free(buf.d);
+    buffer_free(&buf);
 
     if(f != Z_NULL)
         gzclose(f);
