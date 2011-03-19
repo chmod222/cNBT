@@ -6,7 +6,7 @@
 # it, you can buy us a beer in return.
 # -----------------------------------------------------------------------------
 
-CFLAGS=-g -Wall -Wextra -std=c99 -pedantic -Wno-implicit-function-declaration
+CFLAGS=-g -Wall -Wextra -std=c99 -pedantic 
 
 all: nbtreader check
 
