@@ -19,6 +19,8 @@
 #include <string.h>
 #include <zlib.h>
 
+/* TODO: Replace this all with ONLY low-level parsing funcs. */
+
 /* works around a bug in icc */
 int fileno(FILE*);
 

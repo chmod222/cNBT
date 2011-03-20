@@ -92,42 +92,70 @@ typedef struct nbt_node {
     } payload;
 } nbt_node;
 
-/* Creation and destruction functions. */
+               /***** High Level Loading/Saving Functions *****/
 
 /*
- * Loads a NBT tree binary dump from memory. The tree MUST NOT be compressed. If
- * an error occurs, NULL will be returned, and errno will be set to the
- * appropriate nbt_status. Please check your damn pointers.
+ * Loads a NBT tree from a level.dat file. The file must have been opened with
+ * a mode of "rb". If an error occurs, NULL will be returned and errno will be
+ * set to the appropriate nbt_status. Check your danm pointers.
+ */
+nbt_node* nbt_parse_level(FILE* fp);
+
+/*
+ * Loads a NBT tree from a compressed chunk. I recommend memory mapping the
+ * individual region file, then calling nbt_parse_chunk for every chunk within.
+ * If an error occurs, NULL will be returned and errno will be set to the
+ * appropriate nbt_status. Check your damn pointers.
+ */
+nbt_node* nbt_parse_chunk(const void* chunk_start, size_t length);
+
+/*
+ * Dumps a tree into a file, with the tree's representation formatted like
+ * 'level.dat'. The file must have been opened with a mode of "wb". Check your
+ * damn error codes. This function should return NBT_OK.
+ */
+nbt_status nbt_dump_level(const nbt_node* tree, FILE* fp);
+
+/*
+ * Dumps a tree into memory, with the tree's representation formatted like an
+ * McRegion chunk. If an error occurs, a buffer with a NULL `data' pointer will
+ * be returned, and errno will be set.
  *
- * TODO: Allow a compressed tree to be used. I'm not familiar enough with zlib
- *       to write this.
+ * 1) Check your damn pointers.
+ * 2) Don't forget to free buf->data. Memory leaks are bad, mkay?
+ */
+struct buffer nbt_dump_chunk(const nbt_node* tree);
+
+                /***** Low Level Loading/Saving Functions *****/
+
+/*
+ * Loads a NBT tree from memory. The tree MUST NOT be compressed. If an error
+ * occurs, NULL will be returned, and errno will be set to the appropriate
+ * nbt_status. Please check your damn pointers.
  */
 nbt_node* nbt_parse(const void* memory, size_t length);
 
 /*
- * Loads an NBT tree binary dump from a file. The file MUST have been compressed
- * with gzip. If an error occurs, NULL will be returned and errno will be set to
- * the appropriate nbt_status. Please check your damn pointers.
- */
-nbt_node* nbt_parse_file(FILE* fp);
-
-/*
- * Dumps an nbt tree to a file, in ascii format. It will be indented and
- * displayed as nicely as possible. With spaces and not tabs, of course ;)
- * 
- * If an error occurs, the function will return the appropriate nbt_status.
- * Please check your damn error codes.
- */
-nbt_status nbt_dump_ascii(const nbt_node* tree, FILE* fp);
-
-/*
- * Dumps an nbt tree to a file in Notch's official binary format. Trees dumped
- * with this function can be regenerated with nbt_parse_file.
+ * Returns a NULL-terminated string as the ascii representation of the tree. If
+ * an error occurs, NULL will be returned and errno will be set.
  *
- * If an error occurs, this function will return the appropriate nbt_status.
- * Please check your damn error codes.
+ * 1) Check your damn pointers.
+ * 2) Don't forget to free the returned pointer. Memory leaks are bad, mkay?
  */
-nbt_status nbt_dump_binary(const nbt_node* tree, FILE* fp);
+char* nbt_dump_ascii(const nbt_node* tree);
+
+/*
+ * Returns a buffer representing the uncompressed tree in Notch's official
+ * binary format. Trees dumped with this function can be regenerated with
+ * nbt_parse. If an error occurs, a buffer with a NULL `data' pointer will be
+ * returned, and errno will be set.
+ *
+ * 1) Check your damn pointers.
+ * 2) Don't forget to free buf->data. Memory leaks are bad, mkay?
+ */
+struct buffer nbt_dump_binary(const nbt_node* tree);
+
+                   /***** Tree Manipulation Functions *****/
 
 /*
  * Clones an existing tree. Returns NULL on memory errors.
@@ -144,8 +172,6 @@ void nbt_free(nbt_node*);
  * Recursively frees all the elements of a list, and then frees the list itself.
  */
 void nbt_free_list(struct tag_list*);
-
-/* Utility functions. */
 
 /*
  * A visitor function to traverse the tree. Return true to keep going, false to
@@ -213,6 +239,10 @@ nbt_node* nbt_find_by_name(nbt_node* tree, const char* name);
 /* Returns the number of nodes in the tree. */
 size_t nbt_size(const nbt_node* tree);
 
+/* TODO: More utilities as requests are made and patches contributed. */
+
+                      /***** Utility Functions *****/
+
 /*
  * Converts a type to a print-friendly string. The string is statically
  * allocated, and therefore does not have to be freed by the user.
@@ -224,8 +254,6 @@ const char* nbt_type_to_string(nbt_type);
  * allocated, and therefore does not have to be freed by the user.
  */
 const char* nbt_error_to_string(nbt_status);
-
-/* TODO: More utilities as requests are made and patches contributed. */
 
 #ifdef __cplusplus
 }

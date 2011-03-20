@@ -106,11 +106,10 @@ bool check_tree_equal(const nbt_node* restrict a, const nbt_node* restrict b)
             return false;
 
         return true;
+    }
 
     default: /* wtf invalid type */
         return false;
-    }
-
     }
 }
 
