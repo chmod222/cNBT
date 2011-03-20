@@ -10,11 +10,10 @@
 #ifndef NBT_BUFFER_H
 #define NBT_BUFFER_H
 
+#include <assert.h>
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
-
-#define INITIAL_SIZE 1024
 
 /*
  * A buffer is 'unlimited' storage for raw data. As long as buffer_append is
@@ -38,6 +37,35 @@ struct buffer {
  */
 #define BUFFER_INIT (struct buffer) { NULL, 0, 0 }
 
+/* Frees all memory associated with the buffer */
+static inline void buffer_free(struct buffer* b)
+{
+    assert(b);
+
+    free(b->data);
+
+    b->data = NULL;
+    b->len = 0;
+    b->cap = 0;
+}
+
+static inline int __buffer_lazy_init(struct buffer* b)
+{
+    assert(b->data == NULL);
+
+    size_t cap = 1024;
+
+    *b = (struct buffer) {
+        .data = malloc(cap),
+        .len  = 0,
+        .cap  = cap
+    };
+
+    if(b->data == NULL) return 1;
+
+    return 0;
+}
+
 /*
  * Ensures there's enough room in the buffer for at least `reserved_amount'
  * bytes. Returns non-zero on failure. If such a failure occurs, further
@@ -45,7 +73,10 @@ struct buffer {
  */
 static inline int buffer_reserve(struct buffer* b, size_t reserved_amount)
 {
-	if(b->cap >= reserved_amount) return 0;
+    assert(b);
+
+    if(b->data == NULL && __buffer_lazy_init(b)) return 1;
+    if(b->cap >= reserved_amount)                return 0;
 
     while(b->cap < reserved_amount)
         b->cap *= 2;
@@ -53,7 +84,7 @@ static inline int buffer_reserve(struct buffer* b, size_t reserved_amount)
     char* temp = realloc(b->data, b->cap);
 
     if(temp == NULL)
-		return buffer_free(b), 1;
+        return buffer_free(b), 1;
 
     b->data = temp;
 
@@ -67,33 +98,15 @@ static inline int buffer_reserve(struct buffer* b, size_t reserved_amount)
  */
 static inline int buffer_append(struct buffer* b, const void* data, size_t n)
 {
-	/* lazy initialization */
-	if(b->data == NULL)
-	{
-		b->cap = INITIAL_SIZE;
-		b->data = malloc(b->cap);
-		if(b->data == NULL)          return 1;
-	}
+    assert(b);
 
-    if(buffer_reserve(b, b->len + n)) return 1;
+    if(b->data == NULL && __buffer_lazy_init(b)) return 1;
+    if(buffer_reserve(b, b->len + n))            return 1;
 
-	/* copy data in */
     memcpy(b->data + b->len, data, n);
     b->len += n;
 
     return 0;
 }
-
-/* Frees all memory associated with the buffer */
-static inline void buffer_free(struct buffer* b)
-{
-    free(b->data);
-
-    b->data = NULL;
-    b->len = 0;
-    b->cap = 0;
-}
-
-#undef INITIAL_SIZE
 
 #endif

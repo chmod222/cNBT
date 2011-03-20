@@ -315,7 +315,6 @@ parse_error:
     return NULL;
 }
 
-
 nbt_node* nbt_parse(const void* mem, size_t len)
 {
     errno = NBT_OK;
@@ -347,89 +346,6 @@ parse_error:
         errno = NBT_ERR;
 
     free(name);
-    return NULL;
-}
-
-/* parses the whole file into a buffer */
-static inline struct buffer __parse_file(gzFile fp)
-{
-    struct buffer ret;
-
-    char buf[4096];
-    size_t bytes_read;
-
-    if(buffer_init(&ret))
-    {
-        errno = NBT_EMEM;
-        return (struct buffer) { NULL, 0, 0 };
-    }
-
-    while((bytes_read = gzread(fp, buf, 4096)) > 0)
-    {
-        int err;
-        gzerror(fp, &err);
-        if(err)
-        {
-            errno = NBT_EGZ;
-            goto parse_error;
-        }
-
-        if(buffer_append(&ret, buf, bytes_read))
-        {
-            errno = NBT_EMEM;
-            goto parse_error;
-        }
-    }
-
-    return ret;
-
-parse_error:
-    buffer_free(&ret);
-    ret.data = NULL;
-    return ret;
-}
-
-/*
- * No incremental parsing goes on. We just dump the whole decompressed file into
- * memory then pass the job off to nbt_parse.
- */
-nbt_node* nbt_parse_file(FILE* fp)
-{
-    nbt_node* ret;
-
-    errno = NBT_OK;
-
-    /*
-     * We need to keep these declarations up here as opposed to where they're
-     * used because they're referenced by the parse_error block.
-     */
-    struct buffer buf = { NULL, 0, 0 };
-    gzFile f = Z_NULL;
-
-                           if(fp == NULL)         goto parse_error;
-    int fd = fileno(fp);   if(fd == -1)           goto parse_error;
-    f = gzdopen(fd, "rb"); if(f == Z_NULL)        goto parse_error;
-
-    buf = __parse_file(f);
-
-                           if(buf.data == NULL)   goto parse_error;
-                           if(gzclose(f) != Z_OK) goto parse_error;
-
-    ret = nbt_parse(buf.data, buf.len);
-
-
-    buffer_free(&buf);
-    return ret;
-
-parse_error:
-    if(errno == NBT_OK)
-        errno = NBT_EGZ;
-
-    buffer_free(&buf);
-
-    if(f != Z_NULL)
-        gzclose(f);
-
     return NULL;
 }
 
