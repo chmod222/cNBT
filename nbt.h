@@ -45,6 +45,14 @@ typedef enum {
 
 } nbt_type;
 
+typedef enum {
+    STRAT_GZIP,   /* Use a gzip header. Use this if you want your data to be
+                     compressed like level.dat */
+
+    STRAT_INFLATE /* Use a zlib header. Use this if you want your data to be
+                     compressed like a chunk. */
+} nbt_compression_strategy;
+
 /*
  * Represents a single node in the tree. You should switch on `type' and ONLY
  * access the union member it signifies. tag_compound and tag_list contain
@@ -96,36 +104,42 @@ typedef struct nbt_node {
                /***** High Level Loading/Saving Functions *****/
 
 /*
- * Loads a NBT tree from a level.dat file. The file must have been opened with
+ * Loads a NBT tree from a compressed file. The file must have been opened with
  * a mode of "rb". If an error occurs, NULL will be returned and errno will be
  * set to the appropriate nbt_status. Check your danm pointers.
  */
-nbt_node* nbt_parse_level(FILE* fp);
+nbt_node* nbt_parse_file(FILE* fp);
 
 /*
- * Loads a NBT tree from a compressed chunk. I recommend memory mapping the
- * individual region file, then calling nbt_parse_chunk for every chunk within.
- * If an error occurs, NULL will be returned and errno will be set to the
- * appropriate nbt_status. Check your damn pointers.
+ * Loads a NBT tree from a compressed block of memory (such as a chunk or a
+ * pre-loaded level.dat). If an error occurs, NULL will be returned and errno
+ * will be set to the appropriate nbt_status. Check your damn pointers.
+ *
+ * PROTIP: Memory map each individual region file, then call
+ *         nbt_parse_compressed for chunks as needed.
  */
-nbt_node* nbt_parse_chunk(const void* chunk_start, size_t length);
+nbt_node* nbt_parse_compressed(const void* chunk_start, size_t length);
 
 /*
- * Dumps a tree into a file, with the tree's representation formatted like
- * 'level.dat'. The file must have been opened with a mode of "wb". Check your
- * damn error codes. This function should return NBT_OK.
+ * Dumps a tree into a file. Check your damn error codes. This function should
+ * return NBT_OK.
+ *
+ * @see nbt_compression_strategy
  */
-nbt_status nbt_dump_level(const nbt_node* tree, FILE* fp);
+nbt_status nbt_dump_file(const nbt_node* tree,
+                         FILE* fp, nbt_compression_strategy);
 
 /*
- * Dumps a tree into memory, with the tree's representation formatted like an
- * McRegion chunk. If an error occurs, a buffer with a NULL `data' pointer will
- * be returned, and errno will be set.
+ * Dumps a tree into a block of memory. If an error occurs, a buffer with a NULL
+ * `data' pointer will be returned, and errno will be set.
  *
  * 1) Check your damn pointers.
  * 2) Don't forget to free buf->data. Memory leaks are bad, mkay?
+ *
+ * @see nbt_compression_strategy
  */
-struct buffer nbt_dump_chunk(const nbt_node* tree);
+struct buffer nbt_dump_compressed(const nbt_node* tree,
+                                  nbt_compression_strategy);
 
                 /***** Low Level Loading/Saving Functions *****/
 

@@ -15,9 +15,9 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
-#include <zlib.h>
 
 /* TODO: Replace this all with ONLY low-level parsing funcs. */
 
@@ -86,9 +86,9 @@ static inline const void* swapped_memscan(void* dest, const void* src, size_t n)
     }                                         \
 } while(0)
 
-#define CHECKED_GZWRITE(fp, ptr, len) do {        \
-    if(gzwrite((fp), (ptr), (len)) != (int)(len)) \
-        return NBT_EGZ;                           \
+#define CHECKED_APPEND(b, ptr, len) do { \
+    if(buffer_append((b), (ptr), (len))) \
+        return NBT_EMEM;                 \
 } while(0)
 
 /* Parses a tag, given a name (may be NULL) and a type. Fills in the payload. */
@@ -105,6 +105,22 @@ static nbt_node* parse_unnamed_tag(nbt_type type, char* name, const char** memor
     *memory = scanner((dest), *memory, (n));            \
     *length -= (n);                                     \
 } while(0)
+
+/* printfs into the end of a buffer. Note: no null-termination! */
+static inline void bprintf(struct buffer* b, const char* restrict format, ...)
+{
+    va_list args;
+    va_start(args, format);
+
+    int bytes_to_write = vsnprintf(NULL, 0, format, args);
+
+    buffer_reserve(b, b->len + bytes_to_write);
+    vsnprintf(b->data + b->len, bytes_to_write, format, args);
+
+    b->len += bytes_to_write - 1; /* ignore the null-terminator */
+
+    va_end(args);
+}
 
 /*
  * Reads a string from memory, moving the pointer and updating the length
@@ -350,28 +366,28 @@ parse_error:
 }
 
 /* spaces, not tabs ;) */
-static inline void indent(FILE* fp, size_t amount)
+static inline void indent(struct buffer* b, size_t amount)
 {
     for(size_t i = 0; i < amount; i++)
-        fprintf(fp, "    ");
+        bprintf(b, "    ");
 }
 
-static nbt_status __nbt_dump_ascii(const nbt_node* tree, FILE* fp, size_t ident);
+static nbt_status __nbt_dump_ascii(const nbt_node*, struct buffer*, size_t ident);
 
 /* prints the node's name, or (null) if it has none. */
 #define SAFE_NAME(node) ((node)->name ? (node)->name : "<null>")
 
-static inline void dump_byte_array(const struct nbt_byte_array ba, FILE* fp)
+static inline void dump_byte_array(const struct nbt_byte_array ba, struct buffer* b)
 {
     assert(ba.length >= 0);
 
-    fprintf(fp, "[ ");
+    bprintf(b, "[ ");
     for(int32_t i = 0; i < ba.length; ++i)
-        fprintf(fp, "%i ", (int)ba.data[i]);
-    fprintf(fp, "]");
+        bprintf(b, "%i ", (int)ba.data[i]);
+    bprintf(b, "]");
 }
 
-static inline nbt_status dump_list_contents_ascii(const struct tag_list* list, FILE* fp, size_t ident)
+static inline nbt_status dump_list_contents_ascii(const struct tag_list* list, struct buffer* b, size_t ident)
 {
     const struct list_head* pos;
 
@@ -380,69 +396,69 @@ static inline nbt_status dump_list_contents_ascii(const struct tag_list* list, F
         const struct tag_list* entry = list_entry(pos, const struct tag_list, entry);
         nbt_status err;
 
-        if((err = __nbt_dump_ascii(entry->data, fp, ident)) != NBT_OK)
+        if((err = __nbt_dump_ascii(entry->data, b, ident)) != NBT_OK)
             return err;
     }
 
     return NBT_OK;
 }
 
-static inline nbt_status __nbt_dump_ascii(const nbt_node* tree, FILE* fp, size_t ident)
+static inline nbt_status __nbt_dump_ascii(const nbt_node* tree, struct buffer* b, size_t ident)
 {
     if(tree == NULL) return NBT_OK;
 
-    indent(fp, ident);
+    indent(b, ident);
 
     if(tree->type == TAG_BYTE)
-        fprintf(fp, "TAG_Byte(\"%s\"): %i\n", SAFE_NAME(tree), (int)tree->payload.tag_byte);
+        bprintf(b, "TAG_Byte(\"%s\"): %i\n", SAFE_NAME(tree), (int)tree->payload.tag_byte);
     else if(tree->type == TAG_SHORT)
-        fprintf(fp, "TAG_Short(\"%s\"): %i\n", SAFE_NAME(tree), (int)tree->payload.tag_short);
+        bprintf(b, "TAG_Short(\"%s\"): %i\n", SAFE_NAME(tree), (int)tree->payload.tag_short);
     else if(tree->type == TAG_INT)
-        fprintf(fp, "TAG_Int(\"%s\"): %i\n", SAFE_NAME(tree), (int)tree->payload.tag_int);
+        bprintf(b, "TAG_Int(\"%s\"): %i\n", SAFE_NAME(tree), (int)tree->payload.tag_int);
     else if(tree->type == TAG_LONG)
-        fprintf(fp, "TAG_Long(\"%s\"): %" PRIi64 "\n", SAFE_NAME(tree), tree->payload.tag_long);
+        bprintf(b, "TAG_Long(\"%s\"): %" PRIi64 "\n", SAFE_NAME(tree), tree->payload.tag_long);
     else if(tree->type == TAG_FLOAT)
-        fprintf(fp, "TAG_Float(\"%s\"): %f\n", SAFE_NAME(tree), (double)tree->payload.tag_float);
+        bprintf(b, "TAG_Float(\"%s\"): %f\n", SAFE_NAME(tree), (double)tree->payload.tag_float);
     else if(tree->type == TAG_DOUBLE)
-        fprintf(fp, "TAG_Double(\"%s\"): %f\n", SAFE_NAME(tree), tree->payload.tag_double);
+        bprintf(b, "TAG_Double(\"%s\"): %f\n", SAFE_NAME(tree), tree->payload.tag_double);
     else if(tree->type == TAG_BYTE_ARRAY)
     {
-        fprintf(fp, "TAG_Byte_Array(\"%s\"): ", SAFE_NAME(tree));
-        dump_byte_array(tree->payload.tag_byte_array, fp);
-        fprintf(fp, "\n");
+        bprintf(b, "TAG_Byte_Array(\"%s\"): ", SAFE_NAME(tree));
+        dump_byte_array(tree->payload.tag_byte_array, b);
+        bprintf(b, "\n");
     }
     else if(tree->type == TAG_STRING)
     {
         if(tree->payload.tag_string == NULL)
             return NBT_ERR;
 
-        fprintf(fp, "TAG_String(\"%s\"): %s\n", SAFE_NAME(tree), tree->payload.tag_string);
+        bprintf(b, "TAG_String(\"%s\"): %s\n", SAFE_NAME(tree), tree->payload.tag_string);
     }
     else if(tree->type == TAG_LIST)
     {
-        fprintf(fp, "TAG_List(\"%s\")\n", SAFE_NAME(tree));
-        indent(fp, ident);
-        fprintf(fp, "{\n");
+        bprintf(b, "TAG_List(\"%s\")\n", SAFE_NAME(tree));
+        indent(b, ident);
+        bprintf(b, "{\n");
 
         nbt_status err;
-        if((err = dump_list_contents_ascii(tree->payload.tag_list, fp, ident + 1)) != NBT_OK)
+        if((err = dump_list_contents_ascii(tree->payload.tag_list, b, ident + 1)) != NBT_OK)
             return err;
 
-        indent(fp, ident);
-        fprintf(fp, "}\n");
+        indent(b, ident);
+        bprintf(b, "}\n");
     }
     else if(tree->type == TAG_COMPOUND)
     {
-        fprintf(fp, "TAG_Compound(\"%s\")\n", SAFE_NAME(tree));
-        indent(fp, ident);
-        fprintf(fp, "{\n");
+        bprintf(b, "TAG_Compound(\"%s\")\n", SAFE_NAME(tree));
+        indent(b, ident);
+        bprintf(b, "{\n");
 
         nbt_status err;
-        if((err = dump_list_contents_ascii(tree->payload.tag_compound, fp, ident + 1)) != NBT_OK)
+        if((err = dump_list_contents_ascii(tree->payload.tag_compound, b, ident + 1)) != NBT_OK)
             return err;
 
-        indent(fp, ident);
-        fprintf(fp, "}\n");
+        indent(b, ident);
+        bprintf(b, "}\n");
     }
 
     else
@@ -451,27 +467,45 @@ static inline nbt_status __nbt_dump_ascii(const nbt_node* tree, FILE* fp, size_t
     return NBT_OK;
 }
 
-nbt_status nbt_dump_ascii(const nbt_node* tree, FILE* fp)
+char* nbt_dump_ascii(const nbt_node* tree)
 {
-    return __nbt_dump_ascii(tree, fp, 0);
+    errno = NBT_OK;
+
+    /* empty tree */
+    if(tree == NULL)
+    {
+        char* r = malloc(1);
+        *r = '\0';
+        return r;
+    }
+
+    struct buffer b = BUFFER_INIT;
+
+    errno = __nbt_dump_ascii(tree, &b, 0);
+
+    buffer_reserve(&b, b.len + 1);
+    b.data[b.len] = '\0'; /* null-terminate that biatch, since bprintf doesn't
+                             do that for us. */
+
+    return b.data;
 }
 
-static nbt_status dump_byte_array_binary(const struct nbt_byte_array ba, gzFile fp)
+static nbt_status dump_byte_array_binary(const struct nbt_byte_array ba, struct buffer* b)
 {
     int32_t dumped_length = ba.length;
 
     ne2be(&dumped_length, sizeof dumped_length);
 
-    CHECKED_GZWRITE(fp, &dumped_length, sizeof dumped_length);
+    CHECKED_APPEND(b, &dumped_length, sizeof dumped_length);
 
     if(ba.length) assert(ba.data);
 
-    CHECKED_GZWRITE(fp, ba.data, ba.length);
+    CHECKED_APPEND(b, ba.data, ba.length);
 
     return NBT_OK;
 }
 
-static nbt_status dump_string_binary(const char* name, gzFile fp)
+static nbt_status dump_string_binary(const char* name, struct buffer* b)
 {
     assert(name);
 
@@ -484,10 +518,10 @@ static nbt_status dump_string_binary(const char* name, gzFile fp)
         int16_t dumped_len = (int16_t)len;
         ne2be(&dumped_len, sizeof dumped_len);
 
-        CHECKED_GZWRITE(fp, &dumped_len, sizeof dumped_len);
+        CHECKED_APPEND(b, &dumped_len, sizeof dumped_len);
     }
 
-    CHECKED_GZWRITE(fp, name, len);
+    CHECKED_APPEND(b, name, len);
 
     return NBT_OK;
 }
@@ -520,9 +554,9 @@ static inline nbt_type list_is_homogenous(const struct tag_list* list)
     return type;
 }
 
-static nbt_status __dump_binary(const nbt_node*, bool, gzFile);
+static nbt_status __dump_binary(const nbt_node*, bool, struct buffer*);
 
-static nbt_status dump_list_binary(const struct tag_list* list, gzFile fp)
+static nbt_status dump_list_binary(const struct tag_list* list, struct buffer* b)
 {
     nbt_type type;
 
@@ -541,13 +575,13 @@ static nbt_status dump_list_binary(const struct tag_list* list, gzFile fp)
     {
         int8_t _type = (int8_t)type;
         ne2be(&_type, sizeof _type); /* unnecessary, but left in to keep similar code looking similar */
-        CHECKED_GZWRITE(fp, &_type, sizeof _type);
+        CHECKED_APPEND(b, &_type, sizeof _type);
     }
 
     {
         int32_t dumped_len = (int32_t)len;
         ne2be(&dumped_len, sizeof dumped_len);
-        CHECKED_GZWRITE(fp, &dumped_len, sizeof dumped_len);
+        CHECKED_APPEND(b, &dumped_len, sizeof dumped_len);
     }
 
     const struct list_head* pos;
@@ -556,14 +590,14 @@ static nbt_status dump_list_binary(const struct tag_list* list, gzFile fp)
         const struct tag_list* entry = list_entry(pos, const struct tag_list, entry);
         nbt_status ret;
 
-        if((ret = __dump_binary(entry->data, false, fp)) != NBT_OK)
+        if((ret = __dump_binary(entry->data, false, b)) != NBT_OK)
             return ret;
     }
 
     return NBT_OK;
 }
 
-static nbt_status dump_compound_binary(const struct tag_list* list, gzFile fp)
+static nbt_status dump_compound_binary(const struct tag_list* list, struct buffer* b)
 {
     if(list_empty(&list->entry)) /* empty lists can just be silently ignored */
         return NBT_OK;
@@ -574,13 +608,13 @@ static nbt_status dump_compound_binary(const struct tag_list* list, gzFile fp)
         const struct tag_list* entry = list_entry(pos, const struct tag_list, entry);
         nbt_status ret;
 
-        if((ret = __dump_binary(entry->data, true, fp)) != NBT_OK)
+        if((ret = __dump_binary(entry->data, true, b)) != NBT_OK)
             return ret;
     }
 
     /* write out TAG_End */
     uint8_t zero = 0;
-    CHECKED_GZWRITE(fp, &zero, sizeof zero);
+    CHECKED_APPEND(b, &zero, sizeof zero);
 
     return NBT_OK;
 }
@@ -590,27 +624,27 @@ static nbt_status dump_compound_binary(const struct tag_list* list, gzFile fp)
  *                    when dumping lists, because the list header already says
  *                    the type.
  */
-static inline nbt_status __dump_binary(const nbt_node* tree, bool dump_type, gzFile fp)
+static inline nbt_status __dump_binary(const nbt_node* tree, bool dump_type, struct buffer* b)
 {
     if(dump_type)
     { /* write out the type */
         int8_t type = (int8_t)tree->type;
 
-        CHECKED_GZWRITE(fp, &type, sizeof type);
+        CHECKED_APPEND(b, &type, sizeof type);
     }
 
     if(tree->name)
     {
         nbt_status err;
 
-        if((err = dump_string_binary(tree->name, fp)) != NBT_OK)
+        if((err = dump_string_binary(tree->name, b)) != NBT_OK)
             return err;
     }
 
 #define DUMP_NUM(type, x) do {               \
     type temp = x;                           \
     ne2be(&temp, sizeof temp);               \
-    CHECKED_GZWRITE(fp, &temp, sizeof temp); \
+    CHECKED_APPEND(b, &temp, sizeof temp);   \
 } while(0)
 
     if(tree->type == TAG_BYTE)
@@ -626,13 +660,13 @@ static inline nbt_status __dump_binary(const nbt_node* tree, bool dump_type, gzF
     else if(tree->type == TAG_DOUBLE)
         DUMP_NUM(double, tree->payload.tag_double);
     else if(tree->type == TAG_BYTE_ARRAY)
-        return dump_byte_array_binary(tree->payload.tag_byte_array, fp);
+        return dump_byte_array_binary(tree->payload.tag_byte_array, b);
     else if(tree->type == TAG_STRING)
-        return dump_string_binary(tree->payload.tag_string, fp);
+        return dump_string_binary(tree->payload.tag_string, b);
     else if(tree->type == TAG_LIST)
-        return dump_list_binary(tree->payload.tag_list, fp);
+        return dump_list_binary(tree->payload.tag_list, b);
     else if(tree->type == TAG_COMPOUND)
-        return dump_compound_binary(tree->payload.tag_compound, fp);
+        return dump_compound_binary(tree->payload.tag_compound, b);
 
     else
         return NBT_ERR;
@@ -642,20 +676,15 @@ static inline nbt_status __dump_binary(const nbt_node* tree, bool dump_type, gzF
 #undef DUMP_NUM
 }
 
-nbt_status nbt_dump_binary(const nbt_node* tree, FILE* fp)
+struct buffer nbt_dump_binary(const nbt_node* tree)
 {
-    if(tree == NULL) return NBT_OK;
+    errno = NBT_OK;
 
-    int fd = fileno(fp);
-    if(fd == -1) return NBT_EGZ;
+    if(tree == NULL) return BUFFER_INIT;
 
-    gzFile f = gzdopen(fd, "wb");
-    if(f == Z_NULL) return NBT_EGZ;
+    struct buffer ret = BUFFER_INIT;
 
-    nbt_status r = __dump_binary(tree, true, f);
+    errno = __dump_binary(tree, true, &ret);
 
-    gzclose(f);
-
-    return r;
+    return ret;
 }
-
