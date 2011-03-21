@@ -372,8 +372,15 @@ parse_error:
 /* spaces, not tabs ;) */
 static inline void indent(struct buffer* b, size_t amount)
 {
-    for(size_t i = 0; i < amount; i++)
-        bprintf(b, "    ");
+    size_t spaces = amount * 4; /* 4 spaces per indent */
+
+    char temp[spaces + 1];
+
+    for(size_t i = 0; i < spaces; ++i)
+        temp[i] = ' ';
+    temp[spaces] = '\0';
+
+    bprintf(b, "%s", temp);
 }
 
 static nbt_status __nbt_dump_ascii(const nbt_node*, struct buffer*, size_t ident);
