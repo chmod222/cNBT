@@ -77,13 +77,23 @@ void dump_nbt(const char *filename)
 {
     assert(errno == NBT_OK);
 
-    nbt_node* root = nbt_parse_file(fopen(filename, "rb"));
+    FILE* f = fopen(filename, "rb");
+    nbt_node* root = nbt_parse_file(f);
+    fclose(f);
 
     if(errno != NBT_OK)
+    {
         fprintf(stderr, "Parsing error!\n");
+        return;
+    }
 
-    if(nbt_dump_ascii(root, stdout) != NBT_OK)
-        fprintf(stderr, "Printing error!\n");
-
+    char* str = nbt_dump_ascii(root);
     nbt_free(root);
+
+    if(str == NULL)
+        fprintf(stderr, "Printing error!");
+
+    printf("%s", str);
+
+    free(str);
 }

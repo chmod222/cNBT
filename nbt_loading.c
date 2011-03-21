@@ -36,22 +36,18 @@ static struct buffer read_file(FILE* fp)
     size_t bytes_read;
 
     do {
-        if(buffer_reserve(&ret, ret.len + CHUNK_SIZE)) goto read_error;
+        if(buffer_reserve(&ret, ret.len + CHUNK_SIZE))
+            return (errno = NBT_EMEM), buffer_free(&ret), BUFFER_INIT;
 
         bytes_read = fread(ret.data + ret.len, 1, CHUNK_SIZE, fp);
         ret.len += bytes_read;
 
-        if(ferror(fp))              { errno = NBT_EGZ; goto read_error; }
+        if(ferror(fp))
+            return (errno = NBT_EGZ), buffer_free(&ret), BUFFER_INIT;
 
-    } while(bytes_read > 0);
+    } while(!feof(fp));
 
     return ret;
-
-read_error:
-    if(errno == NBT_OK)
-        errno = NBT_EMEM;
-
-    return buffer_free(&ret), BUFFER_INIT;
 }
 
 static nbt_status write_file(FILE* fp, const void* data, size_t len)
@@ -124,7 +120,7 @@ static struct buffer __compress(const void* mem,
             goto compression_error;
         }
 
-        stream.next_out  = (unsigned char*)ret.data + ret.len;
+        stream.next_out  = ret.data + ret.len;
         stream.avail_out = CHUNK_SIZE;
 
         if(deflate(&stream, Z_FINISH) == Z_STREAM_ERROR)
@@ -164,7 +160,9 @@ static struct buffer __decompress(const void* mem, size_t len)
         .avail_in = len
     };
 
-    if(inflateInit(&stream) != Z_OK)
+    /* "Add 32 to windowBits to enable zlib and gzip decoding with automatic
+     * header detection" */
+    if(inflateInit2(&stream, 15 + 32) != Z_OK)
     {
         errno = NBT_EGZ;
         return BUFFER_INIT;

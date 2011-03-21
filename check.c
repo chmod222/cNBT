@@ -113,6 +113,8 @@ bool check_tree_equal(const nbt_node* restrict a, const nbt_node* restrict b)
     }
 }
 
+char* the_tree = NULL;
+
 int main(int argc, char** argv)
 {
     if(argc == 1 || strcmp(argv[1], "--help") == 0)
@@ -125,9 +127,11 @@ int main(int argc, char** argv)
     nbt_node* tree = get_tree(argv[1]);
     printf("OK.\n");
 
-    nbt_status err;
-    if((err = nbt_dump_ascii(tree, stdout)) != NBT_OK)
-        die_with_err(err);
+    /* Use this to refer to the tree in gdb. */
+    char* the_tree = nbt_dump_ascii(tree);
+
+    if(the_tree == NULL)
+        die_with_err(errno);
 
     {
         printf("Checking nbt_clone... ");
@@ -142,8 +146,10 @@ int main(int argc, char** argv)
     FILE* temp = fopen("delete_me.nbt", "wb");
     if(temp == NULL) die("Could not open a temporary file.");
 
+    nbt_status err;
+
     printf("Dumping binary... ");
-    if((err = nbt_dump_binary(tree, temp)) != NBT_OK)
+    if((err = nbt_dump_file(tree, temp, STRAT_GZIP)) != NBT_OK)
         die_with_err(err);
     printf("OK.\n");
 
@@ -159,10 +165,12 @@ int main(int argc, char** argv)
     printf("Checking trees... ");
     if(!check_tree_equal(tree, tree_copy))
     {
-        printf("Other tree:\n");
-        if((err = nbt_dump_ascii(tree_copy, stdout)) != NBT_OK)
-            die_with_err(err);
+        printf("Original tree:\n%s\n", the_tree);
 
+        char* copy = nbt_dump_ascii(tree_copy);
+        if(copy == NULL) die_with_err(err);
+
+        printf("Reparsed tree:\n%s\n", copy);
         die("Trees not equal.");
     }
     printf("OK.\n");
@@ -179,5 +187,6 @@ int main(int argc, char** argv)
 
     printf("OK.\n");
 
+    free(the_tree);
     return 0;
 }

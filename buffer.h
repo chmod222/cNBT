@@ -21,9 +21,9 @@
  * data, just access `data' directly.
  */
 struct buffer {
-    char* data; /* You can access the buffer's raw bytes through this pointer */
-    size_t len; /* Only accesses in the interval [data, data + len) are defined */
-    size_t cap; /* Internal use. The allocated size of the buffer. */
+    unsigned char* data; /* You can access the buffer's raw bytes through this pointer */
+    size_t len;          /* Only accesses in the interval [data, data + len) are defined */
+    size_t cap;          /* Internal use. The allocated size of the buffer. */
 };
 
 /*
@@ -81,7 +81,7 @@ static inline int buffer_reserve(struct buffer* b, size_t reserved_amount)
     while(b->cap < reserved_amount)
         b->cap *= 2;
 
-    char* temp = realloc(b->data, b->cap);
+    unsigned char* temp = realloc(b->data, b->cap);
 
     if(temp == NULL)
         return buffer_free(b), 1;

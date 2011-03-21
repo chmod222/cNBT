@@ -110,16 +110,20 @@ static nbt_node* parse_unnamed_tag(nbt_type type, char* name, const char** memor
 static inline void bprintf(struct buffer* b, const char* restrict format, ...)
 {
     va_list args;
+    int siz;
+
     va_start(args, format);
-
-    int bytes_to_write = vsnprintf(NULL, 0, format, args);
-
-    buffer_reserve(b, b->len + bytes_to_write);
-    vsnprintf(b->data + b->len, bytes_to_write, format, args);
-
-    b->len += bytes_to_write - 1; /* ignore the null-terminator */
-
+    siz = vsnprintf(NULL, 0, format, args) + 1;
     va_end(args);
+
+    char* buf = malloc(siz);
+
+    va_start(args, format);
+    vsnprintf(buf, siz, format, args);
+    va_end(args);
+
+    buffer_append(b, buf, siz - 1);
+    free(buf);
 }
 
 /*
@@ -487,7 +491,7 @@ char* nbt_dump_ascii(const nbt_node* tree)
     b.data[b.len] = '\0'; /* null-terminate that biatch, since bprintf doesn't
                              do that for us. */
 
-    return b.data;
+    return (char*)b.data;
 }
 
 static nbt_status dump_byte_array_binary(const struct nbt_byte_array ba, struct buffer* b)
