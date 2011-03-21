@@ -258,6 +258,9 @@ size_t nbt_size(const nbt_node* tree);
 
                       /***** Utility Functions *****/
 
+/* Returns true if the trees are identical. */
+bool nbt_eq(const nbt_node* restrict a, const nbt_node* restrict b);
+
 /*
  * Converts a type to a print-friendly string. The string is statically
  * allocated, and therefore does not have to be freed by the user.
