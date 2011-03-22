@@ -27,7 +27,8 @@ typedef enum {
     NBT_OK   =  0, /* No error. */
     NBT_ERR  = -1, /* Generic error, most likely of the parsing variety. */
     NBT_EMEM = -2, /* Out of memory. */
-    NBT_EGZ  = -3  /* GZip decompression error. */
+    NBT_EIO  = -3, /* IO error. */
+    NBT_EZ   = -4  /* Zlib compression/decompression error. */
 } nbt_status;
 
 typedef enum {

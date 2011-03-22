@@ -42,9 +42,11 @@ const char* nbt_error_to_string(nbt_status s)
     case NBT_ERR:
         return "NBT tree is corrupt.";
     case NBT_EMEM:
-        return "Out of memory.";
-    case NBT_EGZ:
-        return "Fatal gzip error.";
+        return "Out of memory. You should buy some RAM.";
+    case NBT_EIO:
+        return "IO Error. Nonexistant/corrupt file?";
+    case NBT_EZ:
+        return "Fatal zlib error. Corrupt file?";
     default:
         return "Unknown error.";
     }

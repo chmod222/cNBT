@@ -9,6 +9,9 @@
  */
 #include "nbt.h"
 
+#include "buffer.h"
+#include "list.h"
+
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,7 +46,7 @@ static struct buffer read_file(FILE* fp)
         ret.len += bytes_read;
 
         if(ferror(fp))
-            return (errno = NBT_EGZ), buffer_free(&ret), BUFFER_INIT;
+            return (errno = NBT_EIO), buffer_free(&ret), BUFFER_INIT;
 
     } while(!feof(fp));
 
@@ -59,14 +62,12 @@ static nbt_status write_file(FILE* fp, const void* data, size_t len)
 
     do {
         bytes_written = fwrite(cdata, 1, bytes_left, fp);
+        if(ferror(fp)) return NBT_EIO;
 
         bytes_left -= bytes_written;
         cdata += bytes_written;
 
     } while(bytes_left > 0);
-
-    if(ferror(fp))
-        return NBT_EGZ;
 
     return NBT_OK;
 }
@@ -107,7 +108,7 @@ static struct buffer __compress(const void* mem,
                    Z_DEFAULT_STRATEGY
                   ) != Z_OK)
     {
-        errno = NBT_EGZ;
+        errno = NBT_EZ;
         return BUFFER_INIT;
     }
 
@@ -135,7 +136,7 @@ static struct buffer __compress(const void* mem,
 
 compression_error:
     if(errno == NBT_OK)
-        errno = NBT_EGZ;
+        errno = NBT_EZ;
 
     (void)deflateEnd(&stream);
     buffer_free(&ret);
@@ -164,7 +165,7 @@ static struct buffer __decompress(const void* mem, size_t len)
      * header detection" */
     if(inflateInit2(&stream, 15 + 32) != Z_OK)
     {
-        errno = NBT_EGZ;
+        errno = NBT_EZ;
         return BUFFER_INIT;
     }
 
@@ -207,7 +208,7 @@ static struct buffer __decompress(const void* mem, size_t len)
 
 decompression_error:
     if(errno == NBT_OK)
-        errno = NBT_EGZ;
+        errno = NBT_EZ;
 
     (void)inflateEnd(&stream);
 

@@ -14,8 +14,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* works around a bug in clang */
-char* strdup(const char*);
+/* strdup isn't standard. GNU extension. */
+static inline char* __strdup(const char* s)
+{
+    char* r = malloc(strlen(s) + 1);
+    if(r == NULL) return NULL;
+
+    strcpy(r, s);
+    return r;
+}
 
 #define CHECKED_MALLOC(var, n, on_error) do { \
     if((var = malloc(n)) == NULL)             \
@@ -99,7 +106,7 @@ clone_error:
 /* same as strdup, but handles NULL gracefully */
 static inline char* safe_strdup(const char* s)
 {
-    return s ? strdup(s) : NULL;
+    return s ? __strdup(s) : NULL;
 }
 
 nbt_node* nbt_clone(nbt_node* tree)
@@ -117,7 +124,7 @@ nbt_node* nbt_clone(nbt_node* tree)
 
     if(tree->type == TAG_STRING)
     {
-        ret->payload.tag_string = strdup(tree->payload.tag_string);
+        ret->payload.tag_string = __strdup(tree->payload.tag_string);
         if(ret->payload.tag_string == NULL) goto clone_error;
     }
 
@@ -230,7 +237,7 @@ nbt_node* nbt_filter(const nbt_node* tree, nbt_predicate_t filter, void* aux)
 
     if(tree->type == TAG_STRING)
     {
-        ret->payload.tag_string = strdup(tree->payload.tag_string);
+        ret->payload.tag_string = __strdup(tree->payload.tag_string);
         if(ret->payload.tag_string == NULL) goto filter_error;
     }
 

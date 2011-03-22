@@ -10,6 +10,7 @@
 #include "nbt.h"
 
 #include "buffer.h"
+#include "list.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -18,11 +19,6 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
-
-/* TODO: Replace this all with ONLY low-level parsing funcs. */
-
-/* works around a bug in icc */
-int fileno(FILE*);
 
 /* are we running on a little-endian system? */
 static inline int little_endian()
@@ -394,7 +390,7 @@ static inline void dump_byte_array(const struct nbt_byte_array ba, struct buffer
 
     bprintf(b, "[ ");
     for(int32_t i = 0; i < ba.length; ++i)
-        bprintf(b, "%i ", (int)ba.data[i]);
+        bprintf(b, "%u ", +ba.data[i]);
     bprintf(b, "]");
 }
 
@@ -451,12 +447,13 @@ static inline nbt_status __nbt_dump_ascii(const nbt_node* tree, struct buffer* b
         indent(b, ident);
         bprintf(b, "{\n");
 
-        nbt_status err;
-        if((err = dump_list_contents_ascii(tree->payload.tag_list, b, ident + 1)) != NBT_OK)
-            return err;
+        nbt_status err = dump_list_contents_ascii(tree->payload.tag_list, b, ident + 1);
 
         indent(b, ident);
         bprintf(b, "}\n");
+
+        if(err != NBT_OK)
+            return err;
     }
     else if(tree->type == TAG_COMPOUND)
     {
@@ -464,12 +461,13 @@ static inline nbt_status __nbt_dump_ascii(const nbt_node* tree, struct buffer* b
         indent(b, ident);
         bprintf(b, "{\n");
 
-        nbt_status err;
-        if((err = dump_list_contents_ascii(tree->payload.tag_compound, b, ident + 1)) != NBT_OK)
-            return err;
+        nbt_status err = dump_list_contents_ascii(tree->payload.tag_compound, b, ident + 1);
 
         indent(b, ident);
         bprintf(b, "}\n");
+
+        if(err != NBT_OK)
+            return err;
     }
 
     else
@@ -486,19 +484,29 @@ char* nbt_dump_ascii(const nbt_node* tree)
     if(tree == NULL)
     {
         char* r = malloc(1);
+        if(r == NULL)
+            return (errno = NBT_EMEM), NULL;
+
         *r = '\0';
         return r;
     }
 
     struct buffer b = BUFFER_INIT;
 
-    errno = __nbt_dump_ascii(tree, &b, 0);
+    if((errno = __nbt_dump_ascii(tree, &b, 0)) != NBT_OK) goto OOM;
+    if(         buffer_reserve(&b, b.len + 1))            goto OOM;
 
-    buffer_reserve(&b, b.len + 1);
     b.data[b.len] = '\0'; /* null-terminate that biatch, since bprintf doesn't
                              do that for us. */
 
     return (char*)b.data;
+
+OOM:
+    if(errno != NBT_OK)
+        errno = NBT_EMEM;
+
+    buffer_free(&b);
+    return NULL;
 }
 
 static nbt_status dump_byte_array_binary(const struct nbt_byte_array ba, struct buffer* b)
