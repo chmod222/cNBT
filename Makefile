@@ -8,13 +8,16 @@
 
 CFLAGS=-g -Wall -Wextra -std=c99 -pedantic
 
-all: nbtreader check
+all: nbtreader check regioninfo
 
 nbtreader: main.o libnbt.a
 	$(CC) $(CFLAGS) main.o -L. -lnbt -lz -o nbtreader
 
 check: check.c libnbt.a
 	$(CC) $(CFLAGS) check.c -L. -lnbt -lz -o check
+
+regioninfo: regioninfo.c libnbt.a
+	$(CC) $(CFLAGS) regioninfo.c -L. -lnbt -lz -o regioninfo
 
 test: check
 	cd testdata && ls -1 *.nbt | xargs -n1 ../check && cd ..

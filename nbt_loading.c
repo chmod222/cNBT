@@ -65,7 +65,7 @@ static nbt_status write_file(FILE* fp, const void* data, size_t len)
         if(ferror(fp)) return NBT_EIO;
 
         bytes_left -= bytes_written;
-        cdata += bytes_written;
+        cdata      += bytes_written;
 
     } while(bytes_left > 0);
 
@@ -101,12 +101,12 @@ static struct buffer __compress(const void* mem,
         windowbits += 16;
 
     if(deflateInit2(&stream,
-                   Z_DEFAULT_COMPRESSION,
-                   Z_DEFLATED,
-                   windowbits,
-                   8,
-                   Z_DEFAULT_STRATEGY
-                  ) != Z_OK)
+                    Z_DEFAULT_COMPRESSION,
+                    Z_DEFLATED,
+                    windowbits,
+                    8,
+                    Z_DEFAULT_STRATEGY
+                   ) != Z_OK)
     {
         errno = NBT_EZ;
         return BUFFER_INIT;

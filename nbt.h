@@ -111,6 +111,21 @@ typedef struct nbt_node {
  */
 nbt_node* nbt_parse_file(FILE* fp);
 
+static inline nbt_node* nbt_parse_path(const char* filename)
+{
+    FILE* fp = fopen(filename, "rb");
+
+    if(fp == NULL)
+    {
+        errno = NBT_EIO;
+        return NULL;
+    }
+
+    nbt_node* r = nbt_parse_file(fp);
+    fclose(fp);
+    return r;
+}
+
 /*
  * Loads a NBT tree from a compressed block of memory (such as a chunk or a
  * pre-loaded level.dat). If an error occurs, NULL will be returned and errno
