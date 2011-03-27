@@ -19,6 +19,7 @@ extern "C" {
 #include <stddef.h> /* for size_t */
 #include <stdint.h>
 #include <stdio.h>  /* for FILE* */
+#include <errno.h>
 
 #include "buffer.h" /* for struct buffer */
 #include "list.h"   /* For struct list_entry etc. */

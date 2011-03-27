@@ -332,10 +332,10 @@ static bool names_are_equal(const nbt_node* node, void* vname)
     assert(node);
 
     if(name == NULL && node->name == NULL)
-      return true;
+        return true;
 
     if(!name || !node->name)
-      return false;
+        return false;
 
     return strcmp(node->name, name) == 0;
 }
