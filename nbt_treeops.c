@@ -331,12 +331,11 @@ static bool names_are_equal(const nbt_node* node, void* vname)
 
     assert(node);
 
-    /*
-     * Just another way of saying that they either have to both be NULL or valid
-     * pointers. The !! forces a value to either 1 or 0. Write out a truth table.
-     */
-    if(!(!!name ^ !!node->name))
-        return false;
+    if(name == NULL && node->name == NULL)
+      return true;
+
+    if(!name || !node->name)
+      return false;
 
     return strcmp(node->name, name) == 0;
 }
