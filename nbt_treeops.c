@@ -331,11 +331,10 @@ static bool names_are_equal(const nbt_node* node, void* vname)
 
     assert(node);
 
-    /*
-     * Just another way of saying that they either have to both be NULL or valid
-     * pointers. The !! forces a value to either 1 or 0. Write out a truth table.
-     */
-    if(!(!!name ^ !!node->name))
+    if(name == NULL && node->name == NULL)
+        return true;
+
+    if(name == NULL || node->name == NULL)
         return false;
 
     return strcmp(node->name, name) == 0;
@@ -344,6 +343,79 @@ static bool names_are_equal(const nbt_node* node, void* vname)
 nbt_node* nbt_find_by_name(nbt_node* tree, const char* name)
 {
     return nbt_find(tree, &names_are_equal, (void*)name);
+}
+
+/*
+ * Returns the index of the first occurence of `c' in `s', or the index of the
+ * NULL-terminator. Whichever comes first.
+ */
+static size_t index_of(const char* s, char c)
+{
+    const char* p = s;
+
+    for(; *p; p++)
+        if(*p == c)
+            return p - s;
+
+    return p - s;
+}
+
+/*
+ * Pretends that s1 ends after `len' bytes, and does a strcmp.
+ */
+static int partial_strcmp(const char* s1, size_t len, const char* s2)
+{
+    assert(s1);
+
+    if(s2 == NULL) return len != 0;
+
+    int r;
+    if((r = strncmp(s1, s2, len)) != 0)
+        return r;
+
+    /* at this point, the first `len' characters match. Check for NULL. */
+    return s2[len] != '\0';
+}
+
+/*
+ * Format:
+ *   current_name.[other shit]
+ * OR
+ *   current_name'\0'
+ *
+ * where current_name can be empty.
+ */
+nbt_node* nbt_find_by_path(nbt_node* tree, const char* path)
+{
+    assert(tree);
+    assert(path);
+
+    /* The end of the "current_name" piece. */
+    size_t e = index_of(path, '.');
+
+    bool names_match = partial_strcmp(path, e, tree->name) == 0;
+
+    /* check leaf nodes, then terminate early */
+    if(names_match && path[e] == '\0') return tree;
+
+    if(!names_match) return NULL;
+
+    /* At this point, the inital names match, and we're not at a leaf node. */
+    if(tree->type == TAG_LIST || tree->type == TAG_COMPOUND)
+    {
+        struct list_head* pos;
+        list_for_each(pos, &tree->payload.tag_list->entry)
+        {
+            struct tag_list* elem = list_entry(pos, struct tag_list, entry);
+            nbt_node* r;
+
+            if((r = nbt_find_by_path(elem->data, path + e + 1)) != NULL)
+                return r;
+        }
+    }
+
+    /* Wasn't found in the list (or the current node isn't a list). Give up. */
+    return NULL;
 }
 
 /* Gets the length of the list, plus the length of all its children. */

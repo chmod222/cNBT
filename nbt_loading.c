@@ -235,6 +235,21 @@ nbt_node* nbt_parse_file(FILE* fp)
     return ret;
 }
 
+nbt_node* nbt_parse_path(const char* filename)
+{
+    FILE* fp = fopen(filename, "rb");
+
+    if(fp == NULL)
+    {
+        errno = NBT_EIO;
+        return NULL;
+    }
+
+    nbt_node* r = nbt_parse_file(fp);
+    fclose(fp);
+    return r;
+}
+
 nbt_node* nbt_parse_compressed(const void* chunk_start, size_t length)
 {
     struct buffer decompressed = __decompress(chunk_start, length);

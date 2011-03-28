@@ -111,20 +111,10 @@ typedef struct nbt_node {
  */
 nbt_node* nbt_parse_file(FILE* fp);
 
-static inline nbt_node* nbt_parse_path(const char* filename)
-{
-    FILE* fp = fopen(filename, "rb");
-
-    if(fp == NULL)
-    {
-        errno = NBT_EIO;
-        return NULL;
-    }
-
-    nbt_node* r = nbt_parse_file(fp);
-    fclose(fp);
-    return r;
-}
+/*
+ * The same as nbt_parse_file, but opens and closes the file for you.
+ */
+nbt_node* nbt_parse_path(const char* filename);
 
 /*
  * Loads a NBT tree from a compressed block of memory (such as a chunk or a
@@ -266,6 +256,17 @@ nbt_node* nbt_find(nbt_node* tree, nbt_predicate_t, void* aux);
  * Feel free to cast as necessary.
  */
 nbt_node* nbt_find_by_name(nbt_node* tree, const char* name);
+
+/*
+ * Returns the first node with the "path" in the tree of `path'. If no such node
+ * exists, returns NULL. If an element has no name, something like:
+ *
+ * root.subelement..data == "root" -> "subelement" -> "" -> "data"
+ *
+ * Remember, if multiple elements exist in a sublist which share the same name
+ * (including ""), the first one will be chosen.
+ */
+nbt_node* nbt_find_by_path(nbt_node* tree, const char* path);
 
 /* Returns the number of nodes in the tree. */
 size_t nbt_size(const nbt_node* tree);
