@@ -59,7 +59,7 @@ int buffer_reserve(struct buffer* b, size_t reserved_amount)
        unlikely(lazy_init(b)))
         return 1;
 
-    if(unlikely(b->cap >= reserved_amount))
+    if(likely(b->cap >= reserved_amount))
         return 0;
 
     while(b->cap < reserved_amount)
