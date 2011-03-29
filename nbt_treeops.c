@@ -395,23 +395,28 @@ nbt_node* nbt_find_by_path(nbt_node* tree, const char* path)
 
     bool names_match = partial_strcmp(path, e, tree->name) == 0;
 
-    /* check leaf nodes, then terminate early */
-    if(names_match && path[e] == '\0') return tree;
+    /* Names don't match. These aren't the droids you're looking for. */
+    if(!names_match)                                         return NULL;
 
-    if(!names_match) return NULL;
+    /* We're a leaf node, and the names match. Wooo found it. */
+    if(path[e] == '\0')                                     return tree;
+
+    /*
+     * Initial names match, but the string isn't at the end. We're expecting a
+     * list, but haven't hit one.
+     */
+    if(tree->type != TAG_LIST && tree->type != TAG_COMPOUND) return NULL;
 
     /* At this point, the inital names match, and we're not at a leaf node. */
-    if(tree->type == TAG_LIST || tree->type == TAG_COMPOUND)
-    {
-        struct list_head* pos;
-        list_for_each(pos, &tree->payload.tag_list->entry)
-        {
-            struct tag_list* elem = list_entry(pos, struct tag_list, entry);
-            nbt_node* r;
 
-            if((r = nbt_find_by_path(elem->data, path + e + 1)) != NULL)
-                return r;
-        }
+    struct list_head* pos;
+    list_for_each(pos, &tree->payload.tag_list->entry)
+    {
+        struct tag_list* elem = list_entry(pos, struct tag_list, entry);
+        nbt_node* r;
+
+        if((r = nbt_find_by_path(elem->data, path + e + 1)) != NULL)
+            return r;
     }
 
     /* Wasn't found in the list (or the current node isn't a list). Give up. */

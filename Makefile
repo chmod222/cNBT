@@ -24,9 +24,10 @@ test: check
 
 main.o: main.c
 
-libnbt.a: nbt_loading.o nbt_parsing.o nbt_treeops.o nbt_util.o
-	ar -rcs libnbt.a nbt_loading.o nbt_parsing.o nbt_treeops.o nbt_util.o
+libnbt.a: buffer.o nbt_loading.o nbt_parsing.o nbt_treeops.o nbt_util.o
+	ar -rcs libnbt.a buffer.o nbt_loading.o nbt_parsing.o nbt_treeops.o nbt_util.o
 
+buffer.o: buffer.c
 nbt_loading.o: nbt_loading.c
 nbt_parsing.o: nbt_parsing.c
 nbt_treeops.o: nbt_treeops.c

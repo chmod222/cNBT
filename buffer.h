@@ -10,10 +10,7 @@
 #ifndef NBT_BUFFER_H
 #define NBT_BUFFER_H
 
-#include <assert.h>
-#include <stdlib.h>
 #include <stddef.h>
-#include <string.h>
 
 /*
  * A buffer is 'unlimited' storage for raw data. As long as buffer_append is
@@ -37,76 +34,25 @@ struct buffer {
  */
 #define BUFFER_INIT (struct buffer) { NULL, 0, 0 }
 
-/* Frees all memory associated with the buffer */
-static inline void buffer_free(struct buffer* b)
-{
-    assert(b);
-
-    free(b->data);
-
-    b->data = NULL;
-    b->len = 0;
-    b->cap = 0;
-}
-
-static inline int __buffer_lazy_init(struct buffer* b)
-{
-    assert(b->data == NULL);
-
-    size_t cap = 1024;
-
-    *b = (struct buffer) {
-        .data = malloc(cap),
-        .len  = 0,
-        .cap  = cap
-    };
-
-    if(b->data == NULL) return 1;
-
-    return 0;
-}
+/*
+ * Frees all memory associated with the buffer. The same buffer may be freed
+ * multiple times without consequence.
+ */
+void buffer_free(struct buffer* b);
 
 /*
  * Ensures there's enough room in the buffer for at least `reserved_amount'
- * bytes. Returns non-zero on failure. If such a failure occurs, further
- * usage of the buffer results in undefined behavior.
+ * bytes. Returns non-zero on failure. If such a failure occurs, the buffer
+ * is deallocated and set to one which can be passed to buffer_free. Any other
+ * usage is undefined.
  */
-static inline int buffer_reserve(struct buffer* b, size_t reserved_amount)
-{
-    assert(b);
-
-    if(b->data == NULL && __buffer_lazy_init(b)) return 1;
-    if(b->cap >= reserved_amount)                return 0;
-
-    while(b->cap < reserved_amount)
-        b->cap *= 2;
-
-    unsigned char* temp = realloc(b->data, b->cap);
-
-    if(temp == NULL)
-        return buffer_free(b), 1;
-
-    b->data = temp;
-
-    return 0;
-}
+int buffer_reserve(struct buffer* b, size_t reserved_amount);
 
 /*
  * Copies `n' bytes from `data' into the buffer. Returns non-zero if an
  * out-of-memory failure occured. If such a failure occurs, further usage of the
  * buffer results in undefined behavior.
  */
-static inline int buffer_append(struct buffer* b, const void* data, size_t n)
-{
-    assert(b);
-
-    if(b->data == NULL && __buffer_lazy_init(b)) return 1;
-    if(buffer_reserve(b, b->len + n))            return 1;
-
-    memcpy(b->data + b->len, data, n);
-    b->len += n;
-
-    return 0;
-}
+int buffer_append(struct buffer* b, const void* data, size_t n);
 
 #endif
