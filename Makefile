@@ -32,3 +32,16 @@ nbt_loading.o: nbt_loading.c
 nbt_parsing.o: nbt_parsing.c
 nbt_treeops.o: nbt_treeops.c
 nbt_util.o: nbt_util.c
+
+clean:
+	rm -f buffer.o
+	rm -f nbt_loading.o
+	rm -f nbt_parsing.o
+	rm -f nbt_treeops.o
+	rm -f nbt_util.o
+	rm -f libnbt.a
+	rm -f main.o
+	rm -f check
+	rm -f regioninfo
+	rm -f nbtreader
+
