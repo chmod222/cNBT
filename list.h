@@ -17,28 +17,28 @@ struct list_head {
 
 /* Adds a new element to the beginning of a list. Returns the head of the list
  * so that calls may be chained. */
-static inline struct list_head* list_add_head(struct list_head* restrict new,
+static inline struct list_head* list_add_head(struct list_head* restrict new_element,
                                               struct list_head* restrict head)
 {
-    new->flink = head->flink;
-    new->blink = head;
+    new_element->flink = head->flink;
+    new_element->blink = head;
 
-    new->flink->blink = new;
-    new->blink->flink = new;
+    new_element->flink->blink = new_element;
+    new_element->blink->flink = new_element;
 
     return head;
 }
 
 /* Adds a new element to the end of a list. Returns the head of the list so that
  * calls may be chained. */
-static inline struct list_head* list_add_tail(struct list_head* restrict new,
+static inline struct list_head* list_add_tail(struct list_head* restrict new_element,
                                               struct list_head* restrict head)
 {
-    new->flink = head;
-    new->blink = head->blink;
+    new_element->flink = head;
+    new_element->blink = head->blink;
 
-    new->flink->blink = new;
-    new->blink->flink = new;
+    new_element->flink->blink = new_element;
+    new_element->blink->flink = new_element;
 
     return head;
 }
