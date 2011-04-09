@@ -7,7 +7,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 IF (CMAKE_COMPILER_IS_GNUCXX)
-  set(CMAKE_C_FLAGS "-Wcpp -Wall -W -Wextra -pedantic -std=c99")
+  set(CMAKE_C_FLAGS "-Wcpp -Wall -W -Wextra -fstrict-aliasing -Wstrict-aliasing=3 -pedantic -std=c99 -Wunsafe-loop-optimizations -funsafe-loop-optimizations")
   set(CMAKE_C_FLAGS_DEBUG "-DDEBUG -g")
   set(CMAKE_C_FLAGS_PROFILE "-DDEBUG -g -pg")
   set(CMAKE_C_FLAGS_RELEASE "-march=native -O3 -s -DNDEBUG")
