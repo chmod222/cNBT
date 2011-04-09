@@ -16,32 +16,24 @@
 #include <string.h>
 #include <getopt.h>
 
-static int opt_dupe = 0;
-
 void dump_nbt(const char *filename);
 
 int main(int argc, char **argv)
 {
     int c;
-    static int opt_dump = 0;
 
     //opterr = 0;
-
     for (;;)
     {
         static struct option long_options[] =
         {
-            {"dump",    no_argument, &opt_dump, 1},
             {"version", no_argument, NULL, 'v'},
-            {"copy",    no_argument, &opt_dupe, 1},
             {NULL,      no_argument, NULL, 0}
         };
 
         int option_index = 0;
 
-        c = getopt_long(argc, argv, "dv", long_options, &option_index);
-
-        if (c == -1)
+        if ((c = getopt_long(argc, argv, "v", long_options, &option_index)) < 0)
             break;
 
         switch (c)
@@ -53,7 +45,7 @@ int main(int argc, char **argv)
                 break;
 
             case 'v':
-                printf("nbttool 1.0 (%s, %s)\n", __DATE__, __TIME__);
+                printf("%s 1.2 (%s, %s)\n", argv[0], __DATE__, __TIME__);
 
                 return EXIT_SUCCESS;
 
@@ -64,10 +56,8 @@ int main(int argc, char **argv)
 
     if (optind < argc)
     {
-        /* There is more in argv */
-
-        if (opt_dump)
-            dump_nbt(argv[optind]);
+        /* Make sure a file was given */
+        dump_nbt(argv[optind]);
     }
 
     return 0;
