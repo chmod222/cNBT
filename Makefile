@@ -6,7 +6,7 @@
 # it, you can buy us a beer in return.
 # -----------------------------------------------------------------------------
 
-CFLAGS=-g -Wall -Wextra -std=c99 -pedantic
+CFLAGS=-g -Wcpp -Wall -Wextra -std=c99 -pedantic
 
 all: nbtreader check regioninfo
 

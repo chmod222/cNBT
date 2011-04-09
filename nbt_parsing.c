@@ -23,12 +23,9 @@
 /* are we running on a little-endian system? */
 static inline int little_endian()
 {
-    union {
-        uint16_t i;
-        char c[2];
-    } t = { 0x0001 };
-
-    return *t.c == 1;
+    uint16_t t = 0x0001;
+    char*    c = (char*)&t;
+    return  *c ==  0x01;
 }
 
 static inline void* swap_bytes(void* s, size_t len)
