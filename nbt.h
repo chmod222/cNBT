@@ -16,8 +16,6 @@
 extern "C" {
 #endif
 
-#define NDEBUG
-
 #include <stdbool.h>
 #include <stddef.h> /* for size_t */
 #include <stdint.h>
