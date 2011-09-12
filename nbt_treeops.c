@@ -34,7 +34,8 @@ static inline char* __strdup(const char* s)
 
 void nbt_free_list(struct tag_list* list)
 {
-    assert(list);
+    if (!list)
+        return;
 
     struct list_head* current;
     struct list_head* temp;

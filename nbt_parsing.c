@@ -578,15 +578,21 @@ static nbt_status dump_list_binary(const struct tag_list* list, struct buffer* b
 
     size_t len = list_length(&list->entry);
 
-    if(len == 0) /* empty lists can just be silently ignored */
-        return NBT_OK;
-
     if(len > 2147483647 /* INT_MAX */)
         return NBT_ERR;
 
-    assert(list_is_homogenous(list) != TAG_INVALID);
-    if((type = list_is_homogenous(list)) == TAG_INVALID)
-        return NBT_ERR;
+    /* Empty lists can not be ignored because empty lists are valid lists,
+     * but by testing homogenousnes on an empty list it is automatically
+     * set to TAG_INVALID. TAG_INVALID is valid for empty lists, tho, because
+     * and empty list of invalid tags is still an empty list. Filled lists of
+     * invalid tags must be rejected.
+     */
+    if (len > 0)
+    {
+        assert(list_is_homogenous(list) != TAG_INVALID);
+        if((type = list_is_homogenous(list)) == TAG_INVALID)
+            return NBT_ERR;
+    }
 
     {
         int8_t _type = (int8_t)type;
@@ -615,9 +621,6 @@ static nbt_status dump_list_binary(const struct tag_list* list, struct buffer* b
 
 static nbt_status dump_compound_binary(const struct tag_list* list, struct buffer* b)
 {
-    if(list_empty(&list->entry)) /* empty lists can just be silently ignored */
-        return NBT_OK;
-
     const struct list_head* pos;
     list_for_each(pos, &list->entry)
     {
