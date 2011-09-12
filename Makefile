@@ -6,7 +6,7 @@
 # it, you can buy us a beer in return.
 # -----------------------------------------------------------------------------
 
-CFLAGS=-g -Wcpp -Wall -Wextra -std=c99 -pedantic
+CFLAGS=-g -Wcpp -Wall -Wextra -std=c99 -pedantic -fPIC
 
 all: nbtreader check regioninfo
 
@@ -18,6 +18,9 @@ check: check.c libnbt.a
 
 regioninfo: regioninfo.c libnbt.a
 	$(CC) $(CFLAGS) regioninfo.c -L. -lnbt -lz -o regioninfo
+
+datlevel: datlevel.c libnbt.a
+	$(CC) $(CFLAGS) datlevel.c -L. -lnbt -lz -o datlevel
 
 test: check
 	cd testdata && ls -1 *.nbt | xargs -n1 ../check && cd ..
