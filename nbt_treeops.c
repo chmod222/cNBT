@@ -54,8 +54,11 @@ void nbt_free(nbt_node* tree)
 {
     if(tree == NULL) return;
 
-    if(tree->type == TAG_LIST || tree->type == TAG_COMPOUND)
-        nbt_free_list(tree->payload.tag_list);
+    if(tree->type == TAG_LIST)
+        nbt_free_list(tree->payload.tag_list.list);
+
+    else if (tree->type == TAG_COMPOUND)
+        nbt_free_list(tree->payload.tag_compound);
 
     else if(tree->type == TAG_BYTE_ARRAY)
         free(tree->payload.tag_byte_array.data);
@@ -142,10 +145,16 @@ nbt_node* nbt_clone(nbt_node* tree)
         ret->payload.tag_byte_array.length = tree->payload.tag_byte_array.length;
     }
 
-    else if(tree->type == TAG_LIST || tree->type == TAG_COMPOUND)
+    else if(tree->type == TAG_LIST)
     {
-        ret->payload.tag_list = clone_list(tree->payload.tag_list);
-        if(ret->payload.tag_list == NULL) goto clone_error;
+        ret->payload.tag_list.list = clone_list(tree->payload.tag_list.list);
+        ret->payload.tag_list.type = tree->payload.tag_list.type;
+        if(ret->payload.tag_list.list == NULL) goto clone_error;
+    }
+    else if(tree->type == TAG_COMPOUND)
+    {
+        ret->payload.tag_compound = clone_list(tree->payload.tag_compound);
+        if(ret->payload.tag_compound == NULL) goto clone_error;
     }
     else
     {
@@ -169,11 +178,20 @@ bool nbt_map(nbt_node* tree, nbt_visitor_t v, void* aux)
     if(!v(tree, aux)) return false;
 
     /* And if the item is a list or compound, recurse through each of their elements. */
-    if(tree->type == TAG_LIST || tree->type == TAG_COMPOUND)
+    if(tree->type == TAG_COMPOUND)
     {
         struct list_head* pos;
 
-        list_for_each(pos, &tree->payload.tag_list->entry)
+        list_for_each(pos, &tree->payload.tag_compound->entry)
+            if(!nbt_map(list_entry(pos, struct tag_list, entry)->data, v, aux))
+                return false;
+    }
+    
+    if(tree->type == TAG_LIST)
+    {
+        struct list_head* pos;
+
+        list_for_each(pos, &tree->payload.tag_list.list->entry)
             if(!nbt_map(list_entry(pos, struct tag_list, entry)->data, v, aux))
                 return false;
     }
@@ -256,10 +274,15 @@ nbt_node* nbt_filter(const nbt_node* tree, nbt_predicate_t filter, void* aux)
     }
 
     /* Okay, we want to keep this node, but keep traversing the tree! */
-    else if(tree->type == TAG_LIST || tree->type == TAG_COMPOUND)
+    else if(tree->type == TAG_LIST)
     {
-        ret->payload.tag_list = filter_list(tree->payload.tag_list, filter, aux);
-        if(ret->payload.tag_list == NULL) goto filter_error;
+        ret->payload.tag_list.list = filter_list(tree->payload.tag_list.list, filter, aux);
+        if(ret->payload.tag_list.list == NULL) goto filter_error;
+    }
+    else if(tree->type == TAG_COMPOUND)
+    {
+        ret->payload.tag_compound = filter_list(tree->payload.tag_compound, filter, aux);
+        if(ret->payload.tag_compound == NULL) goto filter_error;
     }
     else
     {
@@ -289,8 +312,9 @@ nbt_node* nbt_filter_inplace(nbt_node* tree, nbt_predicate_t filter, void* aux)
 
     struct list_head* pos;
     struct list_head* n;
+    struct tag_list *list = tree->type == TAG_LIST? tree->payload.tag_list.list : tree->payload.tag_compound;
 
-    list_for_each_safe(pos, n, &tree->payload.tag_list->entry)
+    list_for_each_safe(pos, n, &list->entry)
     {
         struct tag_list* cur = list_entry(pos, struct tag_list, entry);
 
@@ -314,7 +338,9 @@ nbt_node* nbt_find(nbt_node* tree, nbt_predicate_t predicate, void* aux)
        tree->type != TAG_COMPOUND)    return NULL;
 
     struct list_head* pos;
-    list_for_each(pos, &tree->payload.tag_list->entry)
+    struct tag_list *list = tree->type == TAG_LIST? tree->payload.tag_list.list : tree->payload.tag_compound;
+    
+    list_for_each(pos, &list->entry)
     {
         struct tag_list* p = list_entry(pos, struct tag_list, entry);
         struct nbt_node* found;
@@ -411,7 +437,8 @@ nbt_node* nbt_find_by_path(nbt_node* tree, const char* path)
     /* At this point, the inital names match, and we're not at a leaf node. */
 
     struct list_head* pos;
-    list_for_each(pos, &tree->payload.tag_list->entry)
+    struct tag_list *list = tree->type == TAG_LIST? tree->payload.tag_list.list : tree->payload.tag_compound;
+    list_for_each(pos, &list->entry)
     {
         struct tag_list* elem = list_entry(pos, struct tag_list, entry);
         nbt_node* r;
@@ -441,8 +468,10 @@ size_t nbt_size(const nbt_node* tree)
     if(tree == NULL)
         return 0;
 
-    if(tree->type == TAG_LIST || tree->type == TAG_COMPOUND)
-        return nbt_full_list_length(tree->payload.tag_list) + 1;
-
+    if(tree->type == TAG_LIST)
+        return nbt_full_list_length(tree->payload.tag_list.list) + 1;
+    if(tree->type == TAG_COMPOUND)
+        return nbt_full_list_length(tree->payload.tag_compound) + 1;
+    
     return 1;
 }

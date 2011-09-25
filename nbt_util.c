@@ -111,9 +111,11 @@ bool nbt_eq(const nbt_node* restrict a, const nbt_node* restrict b)
     case TAG_COMPOUND:
     {
         struct list_head *ai, *bi;
+        struct tag_list *alist = a->type == TAG_LIST? a->payload.tag_list.list : a->payload.tag_compound;
+        struct tag_list *blist = b->type == TAG_LIST? b->payload.tag_list.list : b->payload.tag_compound;
 
-        for(ai = a->payload.tag_list->entry.flink, bi = b->payload.tag_list->entry.flink;
-            ai != &a->payload.tag_list->entry &&   bi != &b->payload.tag_list->entry;
+        for(ai = alist->entry.flink, bi = blist->entry.flink;
+            ai != &alist->entry &&   bi != &blist->entry;
             ai = ai->flink,                        bi = bi->flink)
         {
             struct tag_list* ae = list_entry(ai, struct tag_list, entry);
@@ -124,7 +126,7 @@ bool nbt_eq(const nbt_node* restrict a, const nbt_node* restrict b)
         }
 
         /* if there are still elements left in either list... */
-        if(ai != &a->payload.tag_list->entry || bi != &b->payload.tag_list->entry)
+        if(ai != &alist->entry || bi != &blist->entry)
             return false;
 
         return true;

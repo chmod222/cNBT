@@ -94,11 +94,15 @@ typedef struct nbt_node {
          * For more information on using the linked list, see `list.h'. The API
          * is well documented.
          */
-        struct tag_list {
-            struct nbt_node* data; /* A single node's data. */
-            struct list_head entry;
-        } *tag_list, /* The only difference between a list and a compound is its name */
-          *tag_compound;
+        struct nbt_list {
+            nbt_type type;
+            struct tag_list {
+                struct nbt_node* data; /* A single node's data. */
+                struct list_head entry;
+            } *list;
+        } tag_list;
+        
+        struct tag_list *tag_compound;
 
     } payload;
 } nbt_node;

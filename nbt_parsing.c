@@ -172,19 +172,51 @@ parse_error:
     return ret;
 }
 
-static struct tag_list* read_list(const char** memory, size_t* length)
+/*
+ * Is the list all one type? If yes, return the type. Otherwise, return
+ * TAG_INVALID
+ */
+static inline nbt_type list_is_homogenous(struct nbt_list list)
+{
+    nbt_type type = TAG_INVALID;
+    
+    const struct list_head* pos;
+    list_for_each(pos, &list.list->entry)
+    {
+        const struct tag_list* cur = list_entry(pos, const struct tag_list, entry);
+
+        assert(cur->data->type != TAG_INVALID);
+
+        if(cur->data->type == TAG_INVALID)
+            return TAG_INVALID;
+
+        /* if we're the first type, just set it to our current type */
+        if(type == TAG_INVALID) type = cur->data->type;
+
+        if(type != cur->data->type)
+            return TAG_INVALID;
+    }
+    
+    /* if the list was empty, use its current type */
+    if (type == TAG_INVALID) type = list.type;
+
+    return type;
+}
+
+static struct nbt_list read_list(const char** memory, size_t* length)
 {
     uint8_t type;
     int32_t elems;
-    struct tag_list* ret = NULL;
+    struct nbt_list ret;
 
     READ_GENERIC(&type, sizeof type, swapped_memscan, goto parse_error);
     READ_GENERIC(&elems, sizeof elems, swapped_memscan, goto parse_error);
 
-    CHECKED_MALLOC(ret, sizeof *ret, goto parse_error);
+    CHECKED_MALLOC(ret.list, sizeof *ret.list, goto parse_error);
 
-    ret->data = NULL; /* the first value in a list is a sentinel. don't even try to read it. */
-    INIT_LIST_HEAD(&ret->entry);
+    ret.type = (nbt_type)type;
+    ret.list->data = NULL; /* the first value in a list is a sentinel. don't even try to read it. */
+    INIT_LIST_HEAD(&ret.list->entry);
 
     for(int32_t i = 0; i < elems; i++)
     {
@@ -200,17 +232,23 @@ static struct tag_list* read_list(const char** memory, size_t* length)
             goto parse_error;
         }
 
-        list_add_tail(&new->entry, &ret->entry);
+        list_add_tail(&new->entry, &ret.list->entry);
     }
-
+    
+    /* if the list has no type set, set it now */
+    if (ret.type == TAG_INVALID && elems) ret.type = list_is_homogenous(ret);
+    /* if it's empty, an attempt to set it based on name will be done on parse_unnamed_tag */
+    
     return ret;
 
 parse_error:
     if(errno == NBT_OK)
         errno = NBT_ERR;
 
-    nbt_free_list(ret);
-    return NULL;
+    nbt_free_list(ret.list);
+    ret.type = TAG_INVALID;
+    ret.list = NULL;
+    return ret;
 }
 
 static struct tag_list* read_compound(const char** memory, size_t* length)
@@ -305,6 +343,16 @@ static inline nbt_node* parse_unnamed_tag(nbt_type type, char* name, const char*
         break;
     case TAG_LIST:
         node->payload.tag_list = read_list(memory, length);
+        /* try to fix empty lists with no elements */
+        if (node->payload.tag_list.type == TAG_INVALID && node->payload.tag_list.list && list_length(&node->payload.tag_list.list->entry) == 0) {
+            if (node->name && (strcmp(node->name, "TileEntities") == 0 || strcmp(node->name, "Entities") == 0)) {
+                node->payload.tag_list.type = TAG_COMPOUND;
+            } else {
+                /* default to TAG_COMPOUND */
+                node->payload.tag_list.type = TAG_COMPOUND;
+                //fprintf(stderr, "Unknown empty list with no elements: %s\n", node->name?node->name:"(null)");
+            }
+        }
         break;
     case TAG_COMPOUND:
         node->payload.tag_compound = read_compound(memory, length);
@@ -444,7 +492,7 @@ static inline nbt_status __nbt_dump_ascii(const nbt_node* tree, struct buffer* b
         indent(b, ident);
         bprintf(b, "{\n");
 
-        nbt_status err = dump_list_contents_ascii(tree->payload.tag_list, b, ident + 1);
+        nbt_status err = dump_list_contents_ascii(tree->payload.tag_list.list, b, ident + 1);
 
         indent(b, ident);
         bprintf(b, "}\n");
@@ -542,57 +590,22 @@ static nbt_status dump_string_binary(const char* name, struct buffer* b)
     return NBT_OK;
 }
 
-/*
- * Is the list all one type? If yes, return the type. Otherwise, return
- * TAG_INVALID
- */
-static inline nbt_type list_is_homogenous(const struct tag_list* list)
-{
-    nbt_type type = TAG_INVALID;
-
-    const struct list_head* pos;
-    list_for_each(pos, &list->entry)
-    {
-        const struct tag_list* cur = list_entry(pos, const struct tag_list, entry);
-
-        assert(cur->data->type != TAG_INVALID);
-
-        if(cur->data->type == TAG_INVALID)
-            return TAG_INVALID;
-
-        /* if we're the first type, just set it to our current type */
-        if(type == TAG_INVALID) type = cur->data->type;
-
-        if(type != cur->data->type)
-            return TAG_INVALID;
-    }
-
-    return type;
-}
-
 static nbt_status __dump_binary(const nbt_node*, bool, struct buffer*);
 
-static nbt_status dump_list_binary(const struct tag_list* list, struct buffer* b)
+static nbt_status dump_list_binary(const struct nbt_list nbtlist, struct buffer* b)
 {
-    nbt_type type;
+    nbt_type type = list_is_homogenous(nbtlist);
+    
+    const struct tag_list* list = nbtlist.list;
 
     size_t len = list_length(&list->entry);
 
     if(len > 2147483647 /* INT_MAX */)
         return NBT_ERR;
-
-    /* Empty lists can not be ignored because empty lists are valid lists,
-     * but by testing homogenousnes on an empty list it is automatically
-     * set to TAG_INVALID. TAG_INVALID is valid for empty lists, tho, because
-     * and empty list of invalid tags is still an empty list. Filled lists of
-     * invalid tags must be rejected.
-     */
-    if (len > 0)
-    {
-        assert(list_is_homogenous(list) != TAG_INVALID);
-        if((type = list_is_homogenous(list)) == TAG_INVALID)
-            return NBT_ERR;
-    }
+    
+    assert(type != TAG_INVALID);
+    if(type == TAG_INVALID)
+        return NBT_ERR;
 
     {
         int8_t _type = (int8_t)type;
