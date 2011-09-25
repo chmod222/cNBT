@@ -475,3 +475,16 @@ size_t nbt_size(const nbt_node* tree)
     
     return 1;
 }
+
+nbt_node* nbt_list_item(nbt_node* list, int n) {
+    if (list == NULL || list->type != TAG_LIST) return NULL;
+    
+    nbt_node *node = NULL;
+    int i = 0;
+    const struct list_head* pos;
+    list_for_each(pos, &list->payload.tag_list.list->entry) {
+        if (i++ == n) node = list_entry(pos, struct tag_list, entry)->data;
+    }
+    
+    return node;
+}
