@@ -276,6 +276,12 @@ nbt_node* nbt_find_by_path(nbt_node* tree, const char* path);
 /* Returns the number of nodes in the tree. */
 size_t nbt_size(const nbt_node* tree);
 
+/*
+ * Returns the Nth item of a list
+ * Don't use this to iterate through a list, it would be very inefficient
+ */
+nbt_node* nbt_list_item(nbt_node* list, int n);
+
 /* TODO: More utilities as requests are made and patches contributed. */
 
                       /***** Utility Functions *****/
