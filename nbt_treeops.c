@@ -32,7 +32,7 @@ static inline char* __strdup(const char* s)
     }                                         \
 } while(0)
 
-void nbt_free_list(struct tag_list* list)
+void nbt_free_list(struct nbt_list* list)
 {
     if (!list)
         return;
@@ -41,12 +41,13 @@ void nbt_free_list(struct tag_list* list)
     struct list_head* temp;
     list_for_each_safe(current, temp, &list->entry)
     {
-        struct tag_list* entry = list_entry(current, struct tag_list, entry);
+        struct nbt_list* entry = list_entry(current, struct nbt_list, entry);
 
         nbt_free(entry->data);
         free(entry);
     }
 
+    free(list->data);
     free(list);
 }
 
@@ -55,7 +56,7 @@ void nbt_free(nbt_node* tree)
     if(tree == NULL) return;
 
     if(tree->type == TAG_LIST)
-        nbt_free_list(tree->payload.tag_list.list);
+        nbt_free_list(tree->payload.tag_list);
 
     else if (tree->type == TAG_COMPOUND)
         nbt_free_list(tree->payload.tag_compound);
@@ -70,22 +71,29 @@ void nbt_free(nbt_node* tree)
     free(tree);
 }
 
-static struct tag_list* clone_list(struct tag_list* list)
+static struct nbt_list* clone_list(struct nbt_list* list)
 {
     /* even empty lists are valid pointers! */
     assert(list);
 
-    struct tag_list* ret;
+    struct nbt_list* ret;
     CHECKED_MALLOC(ret, sizeof *ret, goto clone_error);
 
     INIT_LIST_HEAD(&ret->entry);
+
     ret->data = NULL;
+
+    if(list->data != NULL)
+    {
+        CHECKED_MALLOC(ret->data, sizeof *ret->data, goto clone_error);
+        ret->data->type = list->data->type;
+    }
 
     struct list_head* pos;
     list_for_each(pos, &list->entry)
     {
-        struct tag_list* current = list_entry(pos, struct tag_list, entry);
-        struct tag_list* new;
+        struct nbt_list* current = list_entry(pos, struct nbt_list, entry);
+        struct nbt_list* new;
 
         CHECKED_MALLOC(new, sizeof *new, goto clone_error);
 
@@ -147,9 +155,8 @@ nbt_node* nbt_clone(nbt_node* tree)
 
     else if(tree->type == TAG_LIST)
     {
-        ret->payload.tag_list.list = clone_list(tree->payload.tag_list.list);
-        ret->payload.tag_list.type = tree->payload.tag_list.type;
-        if(ret->payload.tag_list.list == NULL) goto clone_error;
+        ret->payload.tag_list = clone_list(tree->payload.tag_list);
+        if(ret->payload.tag_list == NULL) goto clone_error;
     }
     else if(tree->type == TAG_COMPOUND)
     {
@@ -183,7 +190,7 @@ bool nbt_map(nbt_node* tree, nbt_visitor_t v, void* aux)
         struct list_head* pos;
 
         list_for_each(pos, &tree->payload.tag_compound->entry)
-            if(!nbt_map(list_entry(pos, struct tag_list, entry)->data, v, aux))
+            if(!nbt_map(list_entry(pos, struct nbt_list, entry)->data, v, aux))
                 return false;
     }
     
@@ -191,8 +198,8 @@ bool nbt_map(nbt_node* tree, nbt_visitor_t v, void* aux)
     {
         struct list_head* pos;
 
-        list_for_each(pos, &tree->payload.tag_list.list->entry)
-            if(!nbt_map(list_entry(pos, struct tag_list, entry)->data, v, aux))
+        list_for_each(pos, &tree->payload.tag_list->entry)
+            if(!nbt_map(list_entry(pos, struct nbt_list, entry)->data, v, aux))
                 return false;
     }
 
@@ -200,11 +207,11 @@ bool nbt_map(nbt_node* tree, nbt_visitor_t v, void* aux)
 }
 
 /* Only returns NULL on error. An empty list is still a valid pointer */
-static struct tag_list* filter_list(const struct tag_list* list, nbt_predicate_t predicate, void* aux)
+static struct nbt_list* filter_list(const struct nbt_list* list, nbt_predicate_t predicate, void* aux)
 {
     assert(list);
 
-    struct tag_list* ret;
+    struct nbt_list* ret;
     CHECKED_MALLOC(ret, sizeof *ret, goto filter_error);
 
     ret->data = NULL;
@@ -213,14 +220,14 @@ static struct tag_list* filter_list(const struct tag_list* list, nbt_predicate_t
     const struct list_head* pos;
     list_for_each(pos, &list->entry)
     {
-        const struct tag_list* p = list_entry(pos, struct tag_list, entry);
+        const struct nbt_list* p = list_entry(pos, struct nbt_list, entry);
 
         nbt_node* new_node = nbt_filter(p->data, predicate, aux);
 
         if(errno != NBT_OK)  goto filter_error;
         if(new_node == NULL) continue;
 
-        struct tag_list* new_entry;
+        struct nbt_list* new_entry;
         CHECKED_MALLOC(new_entry, sizeof *new_entry, goto filter_error);
 
         new_entry->data = new_node;
@@ -276,8 +283,8 @@ nbt_node* nbt_filter(const nbt_node* tree, nbt_predicate_t filter, void* aux)
     /* Okay, we want to keep this node, but keep traversing the tree! */
     else if(tree->type == TAG_LIST)
     {
-        ret->payload.tag_list.list = filter_list(tree->payload.tag_list.list, filter, aux);
-        if(ret->payload.tag_list.list == NULL) goto filter_error;
+        ret->payload.tag_list = filter_list(tree->payload.tag_list, filter, aux);
+        if(ret->payload.tag_list == NULL) goto filter_error;
     }
     else if(tree->type == TAG_COMPOUND)
     {
@@ -312,11 +319,11 @@ nbt_node* nbt_filter_inplace(nbt_node* tree, nbt_predicate_t filter, void* aux)
 
     struct list_head* pos;
     struct list_head* n;
-    struct tag_list *list = tree->type == TAG_LIST? tree->payload.tag_list.list : tree->payload.tag_compound;
+    struct nbt_list* list = tree->type == TAG_LIST ? tree->payload.tag_list : tree->payload.tag_compound;
 
     list_for_each_safe(pos, n, &list->entry)
     {
-        struct tag_list* cur = list_entry(pos, struct tag_list, entry);
+        struct nbt_list* cur = list_entry(pos, struct nbt_list, entry);
 
         cur->data = nbt_filter_inplace(cur->data, filter, aux);
 
@@ -338,11 +345,11 @@ nbt_node* nbt_find(nbt_node* tree, nbt_predicate_t predicate, void* aux)
        tree->type != TAG_COMPOUND)    return NULL;
 
     struct list_head* pos;
-    struct tag_list *list = tree->type == TAG_LIST? tree->payload.tag_list.list : tree->payload.tag_compound;
+    struct nbt_list* list = tree->type == TAG_LIST ? tree->payload.tag_list : tree->payload.tag_compound;
     
     list_for_each(pos, &list->entry)
     {
-        struct tag_list* p = list_entry(pos, struct tag_list, entry);
+        struct nbt_list* p = list_entry(pos, struct nbt_list, entry);
         struct nbt_node* found;
 
         if((found = nbt_find(p->data, predicate, aux)))
@@ -437,10 +444,10 @@ nbt_node* nbt_find_by_path(nbt_node* tree, const char* path)
     /* At this point, the inital names match, and we're not at a leaf node. */
 
     struct list_head* pos;
-    struct tag_list *list = tree->type == TAG_LIST? tree->payload.tag_list.list : tree->payload.tag_compound;
+    struct nbt_list* list = tree->type == TAG_LIST ? tree->payload.tag_list : tree->payload.tag_compound;
     list_for_each(pos, &list->entry)
     {
-        struct tag_list* elem = list_entry(pos, struct tag_list, entry);
+        struct nbt_list* elem = list_entry(pos, struct nbt_list, entry);
         nbt_node* r;
 
         if((r = nbt_find_by_path(elem->data, path + e + 1)) != NULL)
@@ -452,13 +459,13 @@ nbt_node* nbt_find_by_path(nbt_node* tree, const char* path)
 }
 
 /* Gets the length of the list, plus the length of all its children. */
-static inline size_t nbt_full_list_length(struct tag_list* list)
+static inline size_t nbt_full_list_length(struct nbt_list* list)
 {
     size_t accum = 0;
 
     struct list_head* pos;
     list_for_each(pos, &list->entry)
-        accum += nbt_size(list_entry(pos, const struct tag_list, entry)->data);
+        accum += nbt_size(list_entry(pos, const struct nbt_list, entry)->data);
 
     return accum;
 }
@@ -469,7 +476,7 @@ size_t nbt_size(const nbt_node* tree)
         return 0;
 
     if(tree->type == TAG_LIST)
-        return nbt_full_list_length(tree->payload.tag_list.list) + 1;
+        return nbt_full_list_length(tree->payload.tag_list) + 1;
     if(tree->type == TAG_COMPOUND)
         return nbt_full_list_length(tree->payload.tag_compound) + 1;
     
@@ -482,8 +489,8 @@ nbt_node* nbt_list_item(nbt_node* list, int n) {
     nbt_node *node = NULL;
     int i = 0;
     const struct list_head* pos;
-    list_for_each(pos, &list->payload.tag_list.list->entry) {
-        if (i++ == n) node = list_entry(pos, struct tag_list, entry)->data;
+    list_for_each(pos, &list->payload.tag_list->entry) {
+        if (i++ == n) node = list_entry(pos, struct nbt_list, entry)->data;
     }
     
     return node;

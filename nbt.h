@@ -96,7 +96,8 @@ typedef struct nbt_node {
         struct nbt_list {
             struct nbt_node* data; /* A single node's data. */
             struct list_head entry;
-        };
+        } * tag_list,
+          * tag_compound;
 
         /*
          * The primary difference between a tag_list and a tag_compound is the
@@ -111,10 +112,6 @@ typedef struct nbt_node {
          * beginning and end of the doubly linked list. The data pointer is
          * unused and set to NULL.
          */
-
-        struct nbt_list* tag_list;
-        struct nbt_list* tag_compound;
-
     } payload;
 } nbt_node;
 
