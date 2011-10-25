@@ -343,16 +343,11 @@ static inline nbt_node* parse_unnamed_tag(nbt_type type, char* name, const char*
         break;
     case TAG_LIST:
         node->payload.tag_list = read_list(memory, length);
-        /* try to fix empty lists with no elements */
-        if (node->payload.tag_list.type == TAG_INVALID && node->payload.tag_list.list && list_length(&node->payload.tag_list.list->entry) == 0) {
-            if (node->name && (strcmp(node->name, "TileEntities") == 0 || strcmp(node->name, "Entities") == 0)) {
-                node->payload.tag_list.type = TAG_COMPOUND;
-            } else {
-                /* default to TAG_COMPOUND */
-                node->payload.tag_list.type = TAG_COMPOUND;
-                //fprintf(stderr, "Unknown empty list with no elements: %s\n", node->name?node->name:"(null)");
-            }
-        }
+
+        /* empty lists with no elements are compounds */
+        if(node->payload.tag_list.type == TAG_INVALID && node->payload.tag_list.list && list_empty(&node->payload.tag_list.list->entry))
+            node->payload.tag_list.type = TAG_COMPOUND;
+
         break;
     case TAG_COMPOUND:
         node->payload.tag_compound = read_compound(memory, length);
