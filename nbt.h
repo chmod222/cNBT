@@ -1,7 +1,4 @@
-/*
- * -----------------------------------------------------------------------------
- * "THE BEER-WARE LICENSE" (Revision 42):
- * Lukas Niederbremer <webmaster@flippeh.de> and Clark Gaebel <cg.wowus.cg@gmail.com>
+/* * ----------------------------------------------------------------------------- * "THE BEER-WARE LICENSE" (Revision 42): * Lukas Niederbremer <webmaster@flippeh.de> and Clark Gaebel <cg.wowus.cg@gmail.com>
  * wrote this file. As long as you retain this notice you can do whatever you
  * want with this stuff. If we meet some day, and you think this stuff is worth
  * it, you can buy us a beer in return.
@@ -55,6 +52,8 @@ typedef enum {
                      compressed like a chunk. */
 } nbt_compression_strategy;
 
+struct nbt_node;
+
 /*
  * Represents a single node in the tree. You should switch on `type' and ONLY
  * access the union member it signifies. tag_compound and tag_list contain
@@ -95,14 +94,26 @@ typedef struct nbt_node {
          * is well documented.
          */
         struct nbt_list {
-            nbt_type type;
-            struct tag_list {
-                struct nbt_node* data; /* A single node's data. */
-                struct list_head entry;
-            } *list;
-        } tag_list;
-        
-        struct tag_list *tag_compound;
+            struct nbt_node* data; /* A single node's data. */
+            struct list_head entry;
+        };
+
+        /*
+         * The primary difference between a tag_list and a tag_compound is the
+         * use of the first (sentinel) node.
+         *
+         * In an nbt_list, the sentinel node contains a valid data pointer with
+         * only the type filled in. This is to deal with empty lists which
+         * still posess types. Therefore, the sentinel's data pointer must be
+         * deallocated.
+         *
+         * In the tag_compound, the only use of the sentinel is to get the
+         * beginning and end of the doubly linked list. The data pointer is
+         * unused and set to NULL.
+         */
+
+        struct nbt_list* tag_list;
+        struct nbt_list* tag_compound;
 
     } payload;
 } nbt_node;
@@ -197,7 +208,7 @@ void nbt_free(nbt_node*);
 /*
  * Recursively frees all the elements of a list, and then frees the list itself.
  */
-void nbt_free_list(struct tag_list*);
+void nbt_free_list(struct nbt_list*);
 
 /*
  * A visitor function to traverse the tree. Return true to keep going, false to

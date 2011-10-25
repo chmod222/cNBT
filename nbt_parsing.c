@@ -176,15 +176,16 @@ parse_error:
  * Is the list all one type? If yes, return the type. Otherwise, return
  * TAG_INVALID
  */
-static inline nbt_type list_is_homogenous(struct nbt_list list)
+static nbt_type list_is_homogenous(const struct nbt_list* list)
 {
     nbt_type type = TAG_INVALID;
     
     const struct list_head* pos;
-    list_for_each(pos, &list.list->entry)
+    list_for_each(pos, &list->entry)
     {
-        const struct tag_list* cur = list_entry(pos, const struct tag_list, entry);
+        const struct nbt_list* cur = list_entry(pos, const struct nbt_list, entry);
 
+        assert(cur->data);
         assert(cur->data->type != TAG_INVALID);
 
         if(cur->data->type == TAG_INVALID)
@@ -197,30 +198,35 @@ static inline nbt_type list_is_homogenous(struct nbt_list list)
             return TAG_INVALID;
     }
     
-    /* if the list was empty, use its current type */
-    if (type == TAG_INVALID) type = list.type;
+    /* if the list was empty, use the sentinel type */
+    if(type == TAG_INVALID && list->data != NULL)
+        type = list->data->type;
 
     return type;
 }
 
-static struct nbt_list read_list(const char** memory, size_t* length)
+static struct nbt_list* read_list(const char** memory, size_t* length)
 {
     uint8_t type;
     int32_t elems;
-    struct nbt_list ret;
+    struct nbt_list* ret;
+
+    CHECKED_MALLOC(ret, sizeof *ret, goto parse_error);
+
+    /* we allocate the data pointer to store the type of the list in the first
+     * sentinel element */
+    CHECKED_MALLOC(ret->data, sizeof *ret->data, goto parse_error);
 
     READ_GENERIC(&type, sizeof type, swapped_memscan, goto parse_error);
     READ_GENERIC(&elems, sizeof elems, swapped_memscan, goto parse_error);
 
-    CHECKED_MALLOC(ret.list, sizeof *ret.list, goto parse_error);
+    ret->data->type = (nbt_type)type;
 
-    ret.type = (nbt_type)type;
-    ret.list->data = NULL; /* the first value in a list is a sentinel. don't even try to read it. */
-    INIT_LIST_HEAD(&ret.list->entry);
+    INIT_LIST_HEAD(&ret->entry);
 
     for(int32_t i = 0; i < elems; i++)
     {
-        struct tag_list* new;
+        struct nbt_list* new;
 
         CHECKED_MALLOC(new, sizeof *new, goto parse_error);
 
@@ -232,12 +238,8 @@ static struct nbt_list read_list(const char** memory, size_t* length)
             goto parse_error;
         }
 
-        list_add_tail(&new->entry, &ret.list->entry);
+        list_add_tail(&new->entry, &ret->entry);
     }
-    
-    /* if the list has no type set, set it now */
-    if (ret.type == TAG_INVALID && elems) ret.type = list_is_homogenous(ret);
-    /* if it's empty, an attempt to set it based on name will be done on parse_unnamed_tag */
     
     return ret;
 
@@ -245,15 +247,16 @@ parse_error:
     if(errno == NBT_OK)
         errno = NBT_ERR;
 
-    nbt_free_list(ret.list);
-    ret.type = TAG_INVALID;
-    ret.list = NULL;
-    return ret;
+    nbt_free_list(ret);
+    free(ret->data);
+
+    free(ret);
+    return NULL;
 }
 
-static struct tag_list* read_compound(const char** memory, size_t* length)
+static struct nbt_list* read_compound(const char** memory, size_t* length)
 {
-    struct tag_list* ret;
+    struct nbt_list* ret;
 
     CHECKED_MALLOC(ret, sizeof *ret, goto parse_error);
 
@@ -264,7 +267,7 @@ static struct tag_list* read_compound(const char** memory, size_t* length)
     {
         uint8_t type;
         char* name = NULL;
-        struct tag_list* new_entry;
+        struct nbt_list* new_entry;
 
         READ_GENERIC(&type, sizeof type, swapped_memscan, goto parse_error);
 
@@ -343,11 +346,6 @@ static inline nbt_node* parse_unnamed_tag(nbt_type type, char* name, const char*
         break;
     case TAG_LIST:
         node->payload.tag_list = read_list(memory, length);
-
-        /* empty lists with no elements are compounds */
-        if(node->payload.tag_list.type == TAG_INVALID && node->payload.tag_list.list && list_empty(&node->payload.tag_list.list->entry))
-            node->payload.tag_list.type = TAG_COMPOUND;
-
         break;
     case TAG_COMPOUND:
         node->payload.tag_compound = read_compound(memory, length);
@@ -392,8 +390,7 @@ nbt_node* nbt_parse(const void* mem, size_t len)
 
     nbt_node* ret = parse_unnamed_tag((nbt_type)type, name, memory, length);
 
-    /* We can't check for NULL, because it COULD be an empty tree. */
-    if(errno != NBT_OK) goto parse_error;
+    if(ret == NULL) goto parse_error;
 
     return ret;
 
@@ -434,13 +431,13 @@ static inline void dump_byte_array(const struct nbt_byte_array ba, struct buffer
     bprintf(b, "]");
 }
 
-static inline nbt_status dump_list_contents_ascii(const struct tag_list* list, struct buffer* b, size_t ident)
+static inline nbt_status dump_list_contents_ascii(const struct nbt_list* list, struct buffer* b, size_t ident)
 {
     const struct list_head* pos;
 
     list_for_each(pos, &list->entry)
     {
-        const struct tag_list* entry = list_entry(pos, const struct tag_list, entry);
+        const struct nbt_list* entry = list_entry(pos, const struct nbt_list, entry);
         nbt_status err;
 
         if((err = __nbt_dump_ascii(entry->data, b, ident)) != NBT_OK)
@@ -483,11 +480,11 @@ static inline nbt_status __nbt_dump_ascii(const nbt_node* tree, struct buffer* b
     }
     else if(tree->type == TAG_LIST)
     {
-        bprintf(b, "TAG_List(\"%s\")\n", SAFE_NAME(tree));
+        bprintf(b, "TAG_List(\"%s\") [%s]\n", SAFE_NAME(tree), nbt_type_to_string(tree->payload.tag_list->data->type));
         indent(b, ident);
         bprintf(b, "{\n");
 
-        nbt_status err = dump_list_contents_ascii(tree->payload.tag_list.list, b, ident + 1);
+        nbt_status err = dump_list_contents_ascii(tree->payload.tag_list, b, ident + 1);
 
         indent(b, ident);
         bprintf(b, "}\n");
@@ -520,16 +517,7 @@ char* nbt_dump_ascii(const nbt_node* tree)
 {
     errno = NBT_OK;
 
-    /* empty tree */
-    if(tree == NULL)
-    {
-        char* r = malloc(1);
-        if(r == NULL)
-            return (errno = NBT_EMEM), NULL;
-
-        *r = '\0';
-        return r;
-    }
+    assert(tree);
 
     struct buffer b = BUFFER_INIT;
 
@@ -587,12 +575,10 @@ static nbt_status dump_string_binary(const char* name, struct buffer* b)
 
 static nbt_status __dump_binary(const nbt_node*, bool, struct buffer*);
 
-static nbt_status dump_list_binary(const struct nbt_list nbtlist, struct buffer* b)
+static nbt_status dump_list_binary(const struct nbt_list* list, struct buffer* b)
 {
-    nbt_type type = list_is_homogenous(nbtlist);
+    nbt_type type = list_is_homogenous(list);
     
-    const struct tag_list* list = nbtlist.list;
-
     size_t len = list_length(&list->entry);
 
     if(len > 2147483647 /* INT_MAX */)
@@ -617,7 +603,7 @@ static nbt_status dump_list_binary(const struct nbt_list nbtlist, struct buffer*
     const struct list_head* pos;
     list_for_each(pos, &list->entry)
     {
-        const struct tag_list* entry = list_entry(pos, const struct tag_list, entry);
+        const struct nbt_list* entry = list_entry(pos, const struct nbt_list, entry);
         nbt_status ret;
 
         if((ret = __dump_binary(entry->data, false, b)) != NBT_OK)
@@ -627,12 +613,12 @@ static nbt_status dump_list_binary(const struct nbt_list nbtlist, struct buffer*
     return NBT_OK;
 }
 
-static nbt_status dump_compound_binary(const struct tag_list* list, struct buffer* b)
+static nbt_status dump_compound_binary(const struct nbt_list* list, struct buffer* b)
 {
     const struct list_head* pos;
     list_for_each(pos, &list->entry)
     {
-        const struct tag_list* entry = list_entry(pos, const struct tag_list, entry);
+        const struct nbt_list* entry = list_entry(pos, const struct nbt_list, entry);
         nbt_status ret;
 
         if((ret = __dump_binary(entry->data, true, b)) != NBT_OK)
