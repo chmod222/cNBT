@@ -248,7 +248,6 @@ parse_error:
         errno = NBT_ERR;
 
     nbt_free_list(ret);
-    free(ret->data);
 
     free(ret);
     return NULL;
