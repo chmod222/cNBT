@@ -30,17 +30,18 @@ typedef enum {
 } nbt_status;
 
 typedef enum {
-    TAG_INVALID    = 0, /* tag_end, but we don't use it in the in-memory representation. */
-    TAG_BYTE       = 1, /* char, 8 bits, signed */
-    TAG_SHORT      = 2, /* short, 16 bits, signed */
-    TAG_INT        = 3, /* long, 32 bits, signed */
-    TAG_LONG       = 4, /* long long, 64 bits, signed */
-    TAG_FLOAT      = 5, /* float, 32 bits, signed */
-    TAG_DOUBLE     = 6, /* double, 64 bits, signed */
-    TAG_BYTE_ARRAY = 7, /* char *, 8 bits, unsigned, TAG_INT length */
-    TAG_STRING     = 8, /* char *, 8 bits, signed, TAG_SHORT length */
-    TAG_LIST       = 9, /* X *, X bits, TAG_INT length, no names inside */
-    TAG_COMPOUND   = 10 /* nbt_tag * */
+    TAG_INVALID    = 0,  /* tag_end, but we don't use it in the in-memory representation. */
+    TAG_BYTE       = 1,  /* char, 8 bits, signed */
+    TAG_SHORT      = 2,  /* short, 16 bits, signed */
+    TAG_INT        = 3,  /* long, 32 bits, signed */
+    TAG_LONG       = 4,  /* long long, 64 bits, signed */
+    TAG_FLOAT      = 5,  /* float, 32 bits, signed */
+    TAG_DOUBLE     = 6,  /* double, 64 bits, signed */
+    TAG_BYTE_ARRAY = 7,  /* char *, 8 bits, unsigned, TAG_INT length */
+    TAG_STRING     = 8,  /* char *, 8 bits, signed, TAG_SHORT length */
+    TAG_LIST       = 9,  /* X *, X bits, TAG_INT length, no names inside */
+    TAG_COMPOUND   = 10, /* nbt_tag * */
+    TAG_INT_ARRAY  = 11
 
 } nbt_type;
 
@@ -79,6 +80,11 @@ typedef struct nbt_node {
             unsigned char* data;
             int32_t length;
         } tag_byte_array;
+
+        struct nbt_int_array {
+            unsigned int32_t* data;
+            int32_t length;
+        } tag_int_array;
 
         char* tag_string; /* TODO: technically, this should be a UTF-8 string */
 
