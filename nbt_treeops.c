@@ -158,7 +158,7 @@ nbt_node* nbt_clone(nbt_node* tree)
 
     else if(tree->type == TAG_INT_ARRAY)
     {
-        unsigned char* newbuf;
+        int32_t* newbuf;
         CHECKED_MALLOC(newbuf, tree->payload.tag_int_array.length * sizeof(int32_t), goto clone_error);
 
         memcpy(newbuf,

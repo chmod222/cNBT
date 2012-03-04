@@ -82,7 +82,7 @@ typedef struct nbt_node {
         } tag_byte_array;
 
         struct nbt_int_array {
-            unsigned int32_t* data;
+            int32_t* data;
             int32_t length;
         } tag_int_array;
 
