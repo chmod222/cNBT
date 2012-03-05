@@ -185,6 +185,11 @@ static inline struct nbt_int_array read_int_array(const char** memory, size_t* l
 
     READ_GENERIC(ret.data, (size_t)ret.length * sizeof(int32_t), memscan, goto parse_error);
 
+
+    // Byteswap the whole array.
+    for(int32_t i = 0; i < ret.length; i++)
+        be2ne(ret.data + i, sizeof(int32_t));
+
     return ret;
 
 parse_error:
@@ -604,7 +609,12 @@ static nbt_status dump_int_array_binary(const struct nbt_int_array ia, struct bu
 
     if(ia.length) assert(ia.data);
 
-    CHECKED_APPEND(b, ia.data, ia.length * sizeof(int32_t));
+    for(int32_t i = 0; i < dumped_length; i++)
+    {
+        int32_t swappedElem = ia.data[i];
+        ne2be(&swappedElem, sizeof(swappedElem));
+        CHECKED_APPEND(b, &swappedElem, sizeof(swappedElem));
+    }
 
     return NBT_OK;
 }
