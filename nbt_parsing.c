@@ -106,7 +106,7 @@ static inline void bprintf(struct buffer* b, const char* restrict format, ...)
     int siz;
 
     va_start(args, format);
-    siz = vsnprintf(NULL, 0, format, args) + 1;
+    siz = vsnprintf(NULL, 0, format, args);
     va_end(args);
 
     buffer_reserve(b, b->len + siz);
@@ -115,7 +115,7 @@ static inline void bprintf(struct buffer* b, const char* restrict format, ...)
     vsnprintf((char*)(b->data + b->len), siz, format, args);
     va_end(args);
 
-    b->len += siz - 1; // remember - no null terminator!
+    b->len += siz; // remember - no null terminator!
 }
 
 /*
