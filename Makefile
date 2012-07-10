@@ -20,7 +20,7 @@ regioninfo: regioninfo.c libnbt.a
 	$(CC) $(CFLAGS) regioninfo.c -L. -lnbt -lz -o regioninfo
 
 test: check
-	cd testdata && ls -1 *.nbt | xargs -n1 ../check && cd ..
+	cd testdata && ls -1 *.nbt | xargs -n1 valgrind ../check && cd ..
 
 main.o: main.c
 
