@@ -129,7 +129,7 @@ nbt_node* nbt_clone(nbt_node* tree)
     if(tree == NULL) return NULL;
     assert(tree->type != TAG_INVALID);
 
-    nbt_node* ret;
+    nbt_node* ret = NULL;
     CHECKED_MALLOC(ret, sizeof *ret, return NULL);
 
     ret->type = tree->type;
@@ -227,7 +227,7 @@ static struct nbt_list* filter_list(const struct nbt_list* list, nbt_predicate_t
 {
     assert(list);
 
-    struct nbt_list* ret;
+    struct nbt_list* ret = NULL;
     CHECKED_MALLOC(ret, sizeof *ret, goto filter_error);
 
     ret->data = NULL;
@@ -269,7 +269,7 @@ nbt_node* nbt_filter(const nbt_node* tree, nbt_predicate_t filter, void* aux)
     if(tree == NULL)       return NULL;
     if(!filter(tree, aux)) return NULL;
 
-    nbt_node* ret;
+    nbt_node* ret = NULL;
     CHECKED_MALLOC(ret, sizeof *ret, goto filter_error);
 
     ret->type = tree->type;
