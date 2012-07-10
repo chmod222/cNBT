@@ -609,7 +609,7 @@ static nbt_status dump_int_array_binary(const struct nbt_int_array ia, struct bu
 
     if(ia.length) assert(ia.data);
 
-    for(int32_t i = 0; i < dumped_length; i++)
+    for(int32_t i = 0; i < ia.length; i++)
     {
         int32_t swappedElem = ia.data[i];
         ne2be(&swappedElem, sizeof(swappedElem));
