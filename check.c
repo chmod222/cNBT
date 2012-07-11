@@ -30,6 +30,15 @@ static nbt_node* get_tree(const char* filename)
     return ret;
 }
 
+static bool check_size(nbt_node* n, void* aux)
+{
+    (void)n;
+    int* size = aux;
+    *size += 1;
+
+    return true;
+}
+
 int main(int argc, char** argv)
 {
     if(argc == 1 || strcmp(argv[1], "--help") == 0)
@@ -47,6 +56,18 @@ int main(int argc, char** argv)
 
     if(the_tree == NULL)
         die_with_err(errno);
+
+    {
+        printf("Checking nbt_map and nbt_size...");
+        size_t mapped_size = 0;
+        bool ret = nbt_map(tree, check_size, &mapped_size);
+        size_t actual_size = nbt_size(tree);
+        if(!ret)
+            die("FAILED. nbt_map was terminated by a visitor, even though the visitor wants to do no such thing.");
+        if(mapped_size != actual_size)
+            die("FAILED. nbt_map and nbt_size are not playing nice.");
+        printf("OK.\n");
+    }
 
     {
         printf("Checking nbt_clone... ");
