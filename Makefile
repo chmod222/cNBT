@@ -8,7 +8,7 @@
 
 CFLAGS=-g -Wcpp -Wall -Wextra -std=c99 -pedantic -fPIC
 
-all: nbtreader check regioninfo
+all: nbtreader check
 
 nbtreader: main.o libnbt.a
 	$(CC) $(CFLAGS) main.o -L. -lnbt -lz -o nbtreader
