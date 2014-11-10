@@ -1,4 +1,4 @@
-cNBT is an NBT File (http://www.minecraft.net/docs/NBT.txt) parser that doesn't
+cNBT is an NBT File (see NBT.txt) parser that doesn't
 depend on the horrible slowdown that is the JRE and sticks to the C principle of
 being as simple (and, consequently, as fast) as possible.
 
