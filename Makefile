@@ -6,7 +6,7 @@
 # it, you can buy us a beer in return.
 # -----------------------------------------------------------------------------
 
-CFLAGS=-g -Wcpp -Wall -Wextra -std=c99 -pedantic -fPIC
+CFLAGS=-g -Wall -Wextra -std=c99 -pedantic -fPIC
 
 all: nbtreader check
 
