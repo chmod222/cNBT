@@ -246,12 +246,12 @@ static struct nbt_list* read_list(const char** memory, size_t* length)
      * sentinel element */
     CHECKED_MALLOC(ret->data, sizeof *ret->data, goto parse_error);
 
+    INIT_LIST_HEAD(&ret->entry);
+
     READ_GENERIC(&type, sizeof type, swapped_memscan, goto parse_error);
     READ_GENERIC(&elems, sizeof elems, swapped_memscan, goto parse_error);
 
     ret->data->type = type == TAG_INVALID ? TAG_COMPOUND : (nbt_type)type;
-
-    INIT_LIST_HEAD(&ret->entry);
 
     for(int32_t i = 0; i < elems; i++)
     {
@@ -277,8 +277,6 @@ parse_error:
         errno = NBT_ERR;
 
     nbt_free_list(ret);
-
-    free(ret);
     return NULL;
 }
 
