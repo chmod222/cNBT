@@ -21,7 +21,7 @@
 #include <string.h>
 
 /* are we running on a little-endian system? */
-static inline int little_endian()
+static int little_endian()
 {
     uint16_t t = 0x0001;
     char c[2];
@@ -29,7 +29,7 @@ static inline int little_endian()
     return c[0];
 }
 
-static inline void* swap_bytes(void* s, size_t len)
+static void* swap_bytes(void* s, size_t len)
 {
     for(char* b = s,
             * e = b + len - 1;
@@ -46,7 +46,7 @@ static inline void* swap_bytes(void* s, size_t len)
 }
 
 /* big endian to native endian. works in-place */
-static inline void* be2ne(void* s, size_t len)
+static void* be2ne(void* s, size_t len)
 {
     return little_endian() ? swap_bytes(s, len) : s;
 }
@@ -57,7 +57,7 @@ static inline void* be2ne(void* s, size_t len)
 /* A special form of memcpy which copies `n' bytes into `dest', then returns
  * `src' + n.
  */
-static inline const void* memscan(void* dest, const void* src, size_t n)
+static const void* memscan(void* dest, const void* src, size_t n)
 {
     memcpy(dest, src, n);
     return (const char*)src + n;
@@ -66,7 +66,7 @@ static inline const void* memscan(void* dest, const void* src, size_t n)
 /* Does a memscan, then goes from big endian to native endian on the
  * destination.
  */
-static inline const void* swapped_memscan(void* dest, const void* src, size_t n)
+static const void* swapped_memscan(void* dest, const void* src, size_t n)
 {
     const void* ret = memscan(dest, src, n);
     return be2ne(dest, n), ret;
@@ -101,7 +101,7 @@ static nbt_node* parse_unnamed_tag(nbt_type type, char* name, const char** memor
 } while(0)
 
 /* printfs into the end of a buffer. Note: no null-termination! */
-static inline void bprintf(struct buffer* b, const char* restrict format, ...)
+static void bprintf(struct buffer* b, const char* restrict format, ...)
 {
     va_list args;
     int siz;
@@ -123,7 +123,7 @@ static inline void bprintf(struct buffer* b, const char* restrict format, ...)
  * Reads a string from memory, moving the pointer and updating the length
  * appropriately. Returns NULL on failure.
  */
-static inline char* read_string(const char** memory, size_t* length)
+static char* read_string(const char** memory, size_t* length)
 {
     int16_t string_length;
     char* ret = NULL;
@@ -148,7 +148,29 @@ parse_error:
     return NULL;
 }
 
-static inline struct nbt_byte_array read_byte_array(const char** memory, size_t* length)
+static nbt_node* parse_named_tag(const char** memory, size_t* length)
+{
+  char* name = NULL;
+
+  uint8_t type;
+  READ_GENERIC(&type, sizeof type, memscan, goto parse_error);
+
+  name = read_string(memory, length);
+
+  nbt_node* ret = parse_unnamed_tag((nbt_type)type, name, memory, length);
+  if(ret == NULL) goto parse_error;
+
+  return ret;
+
+parse_error:
+  if(errno == NBT_OK)
+    errno = NBT_ERR;
+
+  free(name);
+  return NULL;
+}
+
+static struct nbt_byte_array read_byte_array(const char** memory, size_t* length)
 {
     struct nbt_byte_array ret;
     ret.data = NULL;
@@ -172,7 +194,7 @@ parse_error:
     return ret;
 }
 
-static inline struct nbt_int_array read_int_array(const char** memory, size_t* length)
+static struct nbt_int_array read_int_array(const char** memory, size_t* length)
 {
     struct nbt_int_array ret;
     ret.data = NULL;
@@ -332,7 +354,7 @@ parse_error:
 /*
  * Parses a tag, given a name (may be NULL) and a type. Fills in the payload.
  */
-static inline nbt_node* parse_unnamed_tag(nbt_type type, char* name, const char** memory, size_t* length)
+static nbt_node* parse_unnamed_tag(nbt_type type, char* name, const char** memory, size_t* length)
 {
     nbt_node* node;
 
@@ -405,34 +427,11 @@ nbt_node* nbt_parse(const void* mem, size_t len)
     const char** memory = (const char**)&mem;
     size_t* length = &len;
 
-    /*
-     * this needs to stay up here since it's referenced by the parse_error
-     * block.
-     */
-    char* name = NULL;
-
-    uint8_t type;
-    READ_GENERIC(&type, sizeof type, memscan, goto parse_error);
-
-    name = read_string(memory, length);
-    if(name == NULL) goto parse_error;
-
-    nbt_node* ret = parse_unnamed_tag((nbt_type)type, name, memory, length);
-
-    if(ret == NULL) goto parse_error;
-
-    return ret;
-
-parse_error:
-    if(errno == NBT_OK)
-        errno = NBT_ERR;
-
-    free(name);
-    return NULL;
+    return parse_named_tag(memory, length);
 }
 
 /* spaces, not tabs ;) */
-static inline void indent(struct buffer* b, size_t amount)
+static void indent(struct buffer* b, size_t amount)
 {
     size_t spaces = amount * 4; /* 4 spaces per indent */
 
@@ -450,7 +449,7 @@ static nbt_status __nbt_dump_ascii(const nbt_node*, struct buffer*, size_t ident
 /* prints the node's name, or (null) if it has none. */
 #define SAFE_NAME(node) ((node)->name ? (node)->name : "<null>")
 
-static inline void dump_byte_array(const struct nbt_byte_array ba, struct buffer* b)
+static void dump_byte_array(const struct nbt_byte_array ba, struct buffer* b)
 {
     assert(ba.length >= 0);
 
@@ -460,7 +459,7 @@ static inline void dump_byte_array(const struct nbt_byte_array ba, struct buffer
     bprintf(b, "]");
 }
 
-static inline void dump_int_array(const struct nbt_int_array ia, struct buffer* b)
+static void dump_int_array(const struct nbt_int_array ia, struct buffer* b)
 {
     assert(ia.length >= 0);
 
@@ -470,7 +469,7 @@ static inline void dump_int_array(const struct nbt_int_array ia, struct buffer* 
     bprintf(b, "]");
 }
 
-static inline nbt_status dump_list_contents_ascii(const struct nbt_list* list, struct buffer* b, size_t ident)
+static nbt_status dump_list_contents_ascii(const struct nbt_list* list, struct buffer* b, size_t ident)
 {
     const struct list_head* pos;
 
@@ -486,7 +485,7 @@ static inline nbt_status dump_list_contents_ascii(const struct nbt_list* list, s
     return NBT_OK;
 }
 
-static inline nbt_status __nbt_dump_ascii(const nbt_node* tree, struct buffer* b, size_t ident)
+static nbt_status __nbt_dump_ascii(const nbt_node* tree, struct buffer* b, size_t ident)
 {
     if(tree == NULL) return NBT_OK;
 
@@ -703,7 +702,7 @@ static nbt_status dump_compound_binary(const struct nbt_list* list, struct buffe
  *                    when dumping lists, because the list header already says
  *                    the type.
  */
-static inline nbt_status __dump_binary(const nbt_node* tree, bool dump_type, struct buffer* b)
+static nbt_status __dump_binary(const nbt_node* tree, bool dump_type, struct buffer* b)
 {
     if(dump_type)
     { /* write out the type */
