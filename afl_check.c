@@ -12,7 +12,9 @@ int main(int argc, const char *argv[]) {
         }
     }
 
-    char buf[65536];
-    size_t len = fread(buf, 1, sizeof(buf), in);
-    nbt_parse(buf, len);
+    while (__AFL_LOOP(10000)) {
+        char buf[65536];
+        size_t len = fread(buf, 1, sizeof(buf), in);
+        nbt_free(nbt_parse(buf, len));
+    }
 }
