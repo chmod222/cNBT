@@ -10,5 +10,5 @@ Currently implemented features:
  * Writing modified NBT structures back to a compressed file
  * Full error reporting and graceful recovery from corrupt files and trees
 
-This project depends on libz for gzip decompressing and compressing, and a compiler
+This project depends on zlib for gzip decompressing and compressing, and a compiler
 with C99 support.
