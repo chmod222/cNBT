@@ -156,6 +156,7 @@ static nbt_node* parse_named_tag(const char** memory, size_t* length)
   READ_GENERIC(&type, sizeof type, memscan, goto parse_error);
 
   name = read_string(memory, length);
+  if(name == NULL) goto parse_error;
 
   nbt_node* ret = parse_unnamed_tag((nbt_type)type, name, memory, length);
   if(ret == NULL) goto parse_error;
